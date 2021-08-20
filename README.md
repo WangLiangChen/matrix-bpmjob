@@ -1,2 +1,2 @@
 # matrix.bpmjob
-Distributed scheduling framework with BPM
+BPMJob is a Distributed scheduling framework with BPM
