@@ -4,6 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>wang.liangchen.matrix</groupId>
     <artifactId>matrix-bpmjob</artifactId>
+    <packaging>pom</packaging>
     <version>1.0.0-SNAPSHOT</version>
 
     <developers>
@@ -17,45 +18,79 @@
             <timezone>+8</timezone>
         </developer>
     </developers>
+    <modules>
+        <module>matrix-bpmjob-trigger-engine</module>
+    </modules>
 
     <properties>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss(+8)</maven.build.timestamp.format>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
+        <version.matrix>1.0.0-SNAPSHOT</version.matrix>
+        <version.springboot>2.7.3</version.springboot>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${version.springboot}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-generator</artifactId>
+                <version>${version.matrix}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
+                <version>${version.matrix}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-web-spring-boot-starter</artifactId>
+                <version>${version.matrix}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-ddd</artifactId>
+                <version>${version.matrix}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
-        <finalName>${project.artifactId}</finalName>
         <resources>
             <resource>
                 <directory>src/main/java</directory>
                 <includes>
-                    <include>**/*.xml</include>
+                    <include>**/*.yaml</include>
+                    <include>**/*.yml</include>
                     <include>**/*.properties</include>
-                    <include>**/META-INF/*</include>
+                    <include>**/*.xml</include>
+                    <include>**/*.sql</include>
+                    <include>**/META-INF/**</include>
                 </includes>
+                <filtering>true</filtering>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <includes>
-                    <include>**/*.sql</include>
-                    <include>**/*.xml</include>
+                    <include>**/*.yaml</include>
+                    <include>**/*.yml</include>
                     <include>**/*.properties</include>
-                    <include>**/META-INF/*</include>
+                    <include>**/*.xml</include>
+                    <include>**/*.sql</include>
+                    <include>**/META-INF/**</include>
                 </includes>
+                <filtering>true</filtering>
             </resource>
         </resources>
     </build>
 
-    <distributionManagement>
-        <repository>
-            <id>rdc-releases</id>
-            <url>https://repo.rdc.aliyun.com/repository/137477-release-xkSv51/</url>
-        </repository>
-        <snapshotRepository>
-            <id>rdc-snapshots</id>
-            <url>https://repo.rdc.aliyun.com/repository/137477-snapshot-bR7Cd4/</url>
-        </snapshotRepository>
-    </distributionManagement>
 </project>
