@@ -19,7 +19,7 @@
         </developer>
     </developers>
     <modules>
-        <module>matrix-bpmjob-trigger-engine</module>
+        <module>matrix-bpmjob-trigger</module>
     </modules>
 
     <properties>
@@ -28,7 +28,10 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <version.matrix>1.0.0-SNAPSHOT</version.matrix>
-        <version.springboot>2.7.3</version.springboot>
+        <version.springboot>2.7.4</version.springboot>
+        <version.postgresql>42.4.0</version.postgresql>
+        <version.mysql>8.0.29</version.mysql>
+        <version.protostuff>1.8.0</version.protostuff>
     </properties>
 
     <dependencyManagement>
@@ -42,12 +45,6 @@
             </dependency>
             <dependency>
                 <groupId>wang.liangchen.matrix</groupId>
-                <artifactId>matrix-framework-generator</artifactId>
-                <version>${version.matrix}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>wang.liangchen.matrix</groupId>
                 <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
                 <version>${version.matrix}</version>
             </dependency>
@@ -57,12 +54,85 @@
                 <version>${version.matrix}</version>
             </dependency>
             <dependency>
+                <groupId>wang.liangchen.matrix.cache</groupId>
+                <artifactId>matrix-cache-sdk-spring-boot-starter</artifactId>
+                <version>${version.matrix}</version>
+            </dependency>
+            <dependency>
                 <groupId>wang.liangchen.matrix</groupId>
                 <artifactId>matrix-framework-ddd</artifactId>
                 <version>${version.matrix}</version>
             </dependency>
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>${version.mysql}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${version.postgresql}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-generator</artifactId>
+                <version>${version.matrix}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.protostuff</groupId>
+                <artifactId>protostuff-core</artifactId>
+                <version>${version.protostuff}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.protostuff</groupId>
+                <artifactId>protostuff-runtime</artifactId>
+                <version>${version.protostuff}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix.cache</groupId>
+            <artifactId>matrix-cache-sdk-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-web-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-generator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-ddd</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.protostuff</groupId>
+            <artifactId>protostuff-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.protostuff</groupId>
+            <artifactId>protostuff-runtime</artifactId>
+        </dependency>
+    </dependencies>
 
     <build>
         <resources>
