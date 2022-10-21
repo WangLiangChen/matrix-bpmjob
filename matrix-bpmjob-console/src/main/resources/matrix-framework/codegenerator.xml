@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- output 代码输出路径,默认为当前项目的src/main/java -->
+<entities output="" base-package="wang.liangchen.matrix.bpmjob" author="Liangchen.Wang">
+    <entity>
+        <!-- 指定数据源 默认为primary -->
+        <datasource></datasource>
+        <table-name>bpmjob_registry</table-name>
+        <!-- 指定实体类名,默认下划线转驼峰 -->
+        <entity-name>Registry</entity-name>
+        <!-- 限界上下文包名,只能一级 -->
+        <context-package>console</context-package>
+        <aggregate-package>registry</aggregate-package>
+        <!-- 是否聚合根 默认false -->
+        <aggregate-root>true</aggregate-root>
+        <!-- 标识版本的列名
+        <column-version>version</column-version>
+        -->
+        <!-- 标识状态的列名,自动生成和状态查询相关的代码 -->
+        <!-- useConstantEnum 是否使用框架提供的默认类型 -->
+        <column-state useConstantEnum="false">state</column-state>
+        <!-- 标记删除的列名和值
+        <column-markdelete value="DELETED">state</column-markdelete>
+        -->
+        <!-- 标识自动转换Json的列名
+        <column-json>staff_settings</column-json>
+        -->
+        <!-- 列名是否转驼峰风格属性名,默认为true
+        <camel-case>true</camel-case>
+         -->
+    </entity>
+</entities>

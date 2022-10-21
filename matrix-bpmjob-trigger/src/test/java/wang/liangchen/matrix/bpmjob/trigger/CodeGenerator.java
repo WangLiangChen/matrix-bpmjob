@@ -3,7 +3,7 @@ package wang.liangchen.matrix.bpmjob.trigger;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import wang.liangchen.matrix.framework.data.annotation.EnableJdbc;
-import wang.liangchen.matrix.framework.generator.DomainGenerator;
+import wang.liangchen.matrix.framework.generator.DDDGenerator;
 
 import javax.inject.Inject;
 
@@ -12,12 +12,12 @@ import javax.inject.Inject;
  */
 @SpringBootTest
 @EnableJdbc
-public class EntityGenerator {
+public class CodeGenerator {
     @Inject
-    private DomainGenerator domainGenerator;
+    private DDDGenerator dddGenerator;
 
     @Test
     public void testGenerate() {
-        domainGenerator.build();
+        dddGenerator.generate();
     }
 }
