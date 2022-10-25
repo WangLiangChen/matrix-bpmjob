@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.trigger;
+package wang.liangchen.matrix.bpmjob.trigger.test;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.support.CronExpression;

@@ -17,5 +17,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
         </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-generator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-ddd</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
     </dependencies>
 </project>

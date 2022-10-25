@@ -92,48 +92,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix.cache</groupId>
-            <artifactId>matrix-cache-sdk-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-web-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-generator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-ddd</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.protostuff</groupId>
-            <artifactId>protostuff-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.protostuff</groupId>
-            <artifactId>protostuff-runtime</artifactId>
-        </dependency>
-    </dependencies>
 
     <build>
         <resources>
