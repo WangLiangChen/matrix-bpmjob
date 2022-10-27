@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -38,8 +39,10 @@ public class TriggerManager implements DisposableBean {
     private final static Logger logger = LoggerFactory.getLogger(TriggerManager.class);
     private final StandaloneDao repository;
     private final Short triggerInterval = 15;
+    private final Short batchSize = 100;
     private final ScheduledExecutorService triggerLoader = Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("job-trigger-"));
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10, new CustomizableThreadFactory("job-scheduler-"));
+    private final ExecutorService jober = Executors.newFixedThreadPool(20, new CustomizableThreadFactory("job-jober-"));
 
     private final Registry registry;
 
@@ -48,6 +51,7 @@ public class TriggerManager implements DisposableBean {
         this.repository = repository;
         this.registry = registryManager.getRegistry();
         startScheduler();
+
     }
 
     public void startScheduler() {
@@ -57,19 +61,15 @@ public class TriggerManager implements DisposableBean {
         }, 0, triggerInterval, TimeUnit.SECONDS);
     }
 
-    /**
-     * last trigger datetime < +15S
-     *
-     * @return accquired trigger ids
-     */
     private Set<Long> acquireTriggers() {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        LocalDateTime max = now.plusSeconds(triggerInterval);
-        int limit = 100;
-        Criteria<Trigger> criteria = Criteria.of(Trigger.class).resultFields(Trigger::getTriggerId)
-                ._lessThan(Trigger::getTriggerNext, max)
+        LocalDateTime range = now.plusSeconds(triggerInterval);
+        Criteria<Trigger> criteria = Criteria.of(Trigger.class)
+                // id only
+                .resultFields(Trigger::getTriggerId)
+                ._lessThan(Trigger::getTriggerNext, range)
                 ._equals(Trigger::getState, TriggerState.NORMAL)
-                .pageSize(limit).pageNumber(1);
+                .pageSize(batchSize).pageNumber(1);
         List<Trigger> triggers = repository.list(criteria);
         Set<Long> triggerIds = triggers.stream().map(Trigger::getTriggerId).collect(Collectors.toSet());
         logger.info("accquired triggers: {}", triggerIds);
@@ -77,12 +77,13 @@ public class TriggerManager implements DisposableBean {
     }
 
     private void exclusiveTrigger(Long triggerId) {
-        // query by key
+        logger.info("trigger '{}' is desired", triggerId);
         Trigger trigger = repository.select(Criteria.of(Trigger.class)
                 .resultFields(Trigger::getTriggerExpression, Trigger::getTriggerNext, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getState)
                 ._equals(Trigger::getTriggerId, triggerId));
 
         if (!Objects.equals(TriggerState.NORMAL.name(), trigger.getState())) {
+            logger.info("trigger isn't NORMAL,skipped");
             return;
         }
         LocalDateTime triggerNext = trigger.getTriggerNext();
@@ -103,26 +104,39 @@ public class TriggerManager implements DisposableBean {
     }
 
     private void missTrigger(Trigger trigger) {
-        // 以当前时间为基准，计算下次触发时间
+        // 计算下次触发时间，以当前时间为基准
         LocalDateTime newTriggerNext = resolveTriggerNext(trigger.getTriggerExpression(), LocalDateTime.now());
-        // 重置下发时间
-        boolean refreshed = refreshTriggerNext(trigger.getTriggerId(), trigger.getTriggerNext(), newTriggerNext);
-        // 被别的节点抢先了
-        if (!refreshed) {
-            logger.warn("Trigger '{}' is missed and skipped,host:{}", trigger.getTriggerId(), registry.getHostName());
-        }
-        logger.warn("Trigger '{}' is missed and refreshed,host:{}", trigger.getTriggerId(), registry.getHostName());
-        switch (trigger.getMissStrategy()) {
-            case COMPENSATE:
-                break;
-            default:
-                break;
-        }
-
+        TransactionUtil.INSTANCE.execute(() -> {
+            boolean renew = renewTriggerNext(trigger.getTriggerId(), trigger.getTriggerNext(), newTriggerNext);
+            if (!renew) {
+                logger.warn("Exclusive failure,Trigger: {}, Host: {}", trigger.getTriggerId(), registry.getHostName());
+                return;
+            }
+            logger.warn("Exclusive success,Trigger: {}, Host: {}", trigger.getTriggerId(), registry.getHostName());
+            switch (trigger.getMissStrategy()) {
+                case COMPENSATE:
+                    Long walId = createWal(trigger.getTriggerId(), trigger.getTriggerNext());
+                    createTask(trigger, walId);
+                    break;
+                default:
+                    break;
+            }
+        });
     }
 
     private void immediateTrigger(Trigger trigger) {
-        // TODO 任务线程池 同一事务域 更新预写日志 创建任务
+        // 计算下次触发时间
+        LocalDateTime triggerNext = trigger.getTriggerNext();
+        LocalDateTime newTriggerNext = resolveTriggerNext(trigger.getTriggerExpression(), triggerNext);
+        TransactionUtil.INSTANCE.execute(() -> {
+            boolean renew = renewTriggerNext(trigger.getTriggerId(), triggerNext, newTriggerNext);
+            if (!renew) {
+                logger.warn("Exclusive failure,Trigger: {}, Host: {}", trigger.getTriggerId(), registry.getHostName());
+                return;
+            }
+            Long walId = createWal(trigger.getTriggerId(), trigger.getTriggerNext());
+            createTask(trigger, walId);
+        });
     }
 
     private void scheduleTrigger(Trigger trigger, long delay) {
@@ -133,34 +147,62 @@ public class TriggerManager implements DisposableBean {
         // 在同一个事务中执行
         TransactionUtil.INSTANCE.execute(() -> {
             // 通过更新抢占触发权
-            boolean refreshed = refreshTriggerNext(triggerId, triggerNext, newTriggerNext);
+            boolean renew = renewTriggerNext(triggerId, triggerNext, newTriggerNext);
             // 获得触发权，写预写日志，入队等待触发
-            if (refreshed) {
+            if (renew) {
                 logger.info("Exclusive success,host: {}, triggerId: {}", registry.getHostName(), triggerId);
-                Wal wal = Wal.newInstance();
-                wal.setTriggerId(triggerId);
-                wal.setRegistryId(registry.getRegistryId());
-                wal.setCreateDatetime(LocalDateTime.now());
-                wal.setScheduleDatetime(triggerNext);
-                wal.setTriggerDatetime(wal.getCreateDatetime());
-                wal.setState(WalState.ACQUIRED.getState());
-                repository.insert(wal);
-                scheduler.schedule(() -> immediateTrigger(trigger), delay, TimeUnit.SECONDS);
+                Long walId = createWal(triggerId, triggerNext);
+                // !import add to delayed queue
+                scheduler.schedule(() -> createTask(trigger, walId), delay, TimeUnit.SECONDS);
                 logger.info("Schedule success,host: {}, triggerId: {}, delay: {}s", registry.getHostName(), triggerId, delay);
+            } else {
+                logger.info("Exclusive failure,host: {}, triggerId: {}", registry.getHostName(), triggerId);
             }
         });
     }
 
-    private boolean refreshTriggerNext(Long triggerId, LocalDateTime triggerNext, LocalDateTime newTriggerNext) {
+    private void createTask(Trigger trigger, Long walId) {
+        jober.execute(() -> {
+            TransactionUtil.INSTANCE.execute(() -> {
+                confirmWal(walId);
+                // TODO createTask
+            });
+        });
+    }
+
+    private boolean renewTriggerNext(Long triggerId, LocalDateTime triggerNext, LocalDateTime newTriggerNext) {
         Trigger trigger = Trigger.newInstance();
         trigger.setTriggerNext(newTriggerNext);
-        UpdateCriteria<Trigger> updateCriteria = UpdateCriteria.of(trigger)._equals(Trigger::getTriggerId, triggerId)._equals(Trigger::getTriggerNext, triggerNext);
+        UpdateCriteria<Trigger> updateCriteria = UpdateCriteria.of(trigger)
+                ._equals(Trigger::getTriggerId, triggerId)
+                ._equals(Trigger::getTriggerNext, triggerNext);
         return 1 == repository.update(updateCriteria);
     }
 
     private LocalDateTime resolveTriggerNext(String expression, LocalDateTime benchmark) {
         CronExpression cronExpression = CronExpression.parse(expression);
         return cronExpression.next(benchmark);
+    }
+
+    private Long createWal(Long triggerId, LocalDateTime scheduleDatetime) {
+        Wal wal = Wal.newInstance();
+        wal.setTriggerId(triggerId);
+        wal.setRegistryId(registry.getRegistryId());
+        LocalDateTime now = LocalDateTime.now();
+        wal.setCreateDatetime(now);
+        wal.setScheduleDatetime(scheduleDatetime);
+        wal.setTriggerDatetime(now);
+        wal.setState(WalState.ACQUIRED.getState());
+        repository.insert(wal);
+        return wal.getWalId();
+    }
+
+    private void confirmWal(Long walId) {
+        Wal wal = Wal.newInstance();
+        wal.setWalId(walId);
+        wal.setState(WalState.TRIGGERED.getState());
+        wal.setTriggerDatetime(LocalDateTime.now());
+        repository.update(wal);
     }
 
     @Override
