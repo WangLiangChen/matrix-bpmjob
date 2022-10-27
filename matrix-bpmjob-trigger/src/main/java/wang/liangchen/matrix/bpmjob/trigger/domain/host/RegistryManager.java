@@ -33,7 +33,8 @@ public class RegistryManager implements DisposableBean {
     private final Registry heartbeatRegistry = Registry.newInstance();
     private final Registry registry = Registry.newInstance();
     private final Short heartbeatInterval = 1;
-    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory("job-beat-"));
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory("job-beat-"));
 
     @Inject
     public RegistryManager(StandaloneDao repository) {
@@ -166,5 +167,7 @@ public class RegistryManager implements DisposableBean {
         return repository.list(Criteria.of(Registry.class)._in(Registry::getState, states));
     }
 
-
+    public Registry getRegistry() {
+        return this.registry;
+    }
 }

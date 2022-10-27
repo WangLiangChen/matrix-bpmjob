@@ -1,16 +1,15 @@
 package wang.liangchen.matrix.bpmjob.trigger.domain.host;
 
-import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
-import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
-import wang.liangchen.matrix.framework.data.annotation.ColumnMarkDelete;
-import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.ColumnState;
+import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 import wang.liangchen.matrix.framework.ddd.domain.AggregateRoot;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.time.LocalDateTime;
 
 /**

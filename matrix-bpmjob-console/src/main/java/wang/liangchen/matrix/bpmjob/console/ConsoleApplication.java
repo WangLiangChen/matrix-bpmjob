@@ -2,7 +2,6 @@ package wang.liangchen.matrix.bpmjob.console;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import wang.liangchen.matrix.cache.sdk.override.EnableMatrixCaching;
 import wang.liangchen.matrix.framework.data.annotation.EnableJdbc;
 import wang.liangchen.matrix.framework.web.annotation.EnableWeb;
 
