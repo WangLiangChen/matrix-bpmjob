@@ -19,19 +19,8 @@
         </dependency>
         <dependency>
             <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-generator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-ddd</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-framework-data-spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>matrix-bpmjob-domain</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>
