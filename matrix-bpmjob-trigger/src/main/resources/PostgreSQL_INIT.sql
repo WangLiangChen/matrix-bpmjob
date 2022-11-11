@@ -136,10 +136,9 @@ create unique index if not exists bpmjob_host_pk on bpmjob_host (
 create table if not exists bpmjob_task
 (
     task_id           int8          not null,
-    parent_id         int8          null,
     host_id           int8          null,
     trigger_id        int8          null,
-    wal_id            int8          null,
+    parent_id         int8          null,
     task_group        varchar(73)   not null,
     trigger_params    varchar(1000) not null,
     task_params       varchar(1000) not null,
@@ -159,16 +158,13 @@ comment on table bpmjob_task is
 comment on column bpmjob_task.task_id is
     'PrimaryKey';
 
-comment on column bpmjob_task.parent_id is
-    'PrimaryKey';
-
 comment on column bpmjob_task.host_id is
     'PrimaryKey';
 
 comment on column bpmjob_task.trigger_id is
     'PrimaryKey';
 
-comment on column bpmjob_task.wal_id is
+comment on column bpmjob_task.parent_id is
     'PrimaryKey';
 
 comment on column bpmjob_task.task_group is
@@ -229,12 +225,6 @@ create index if not exists host_task_fk on bpmjob_task (
                                                         host_id
     );
 
-/*==============================================================*/
-/* Index: wal_task_fk                                           */
-/*==============================================================*/
-create index if not exists wal_task_fk on bpmjob_task (
-                                                       wal_id
-    );
 
 /*==============================================================*/
 /* Table: bpmjob_tenant                                         */
@@ -356,13 +346,14 @@ create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (
 /*==============================================================*/
 create table if not exists bpmjob_wal
 (
-    wal_id            int8      not null,
-    host_id           int8      null,
-    trigger_id        int8      null,
-    create_datetime   timestamp not null,
-    schedule_datetime timestamp not null,
-    trigger_datetime  timestamp not null,
-    state             int2      not null,
+    wal_id            int8        not null,
+    host_id           int8        null,
+    trigger_id        int8        null,
+    wal_group         varchar(73) not null,
+    create_datetime   timestamp   not null,
+    schedule_datetime timestamp   not null,
+    trigger_datetime  timestamp   not null,
+    state             int2        not null,
     constraint pk_bpmjob_wal primary key (wal_id)
 );
 
@@ -377,6 +368,9 @@ comment on column bpmjob_wal.host_id is
 
 comment on column bpmjob_wal.trigger_id is
     'PrimaryKey';
+
+comment on column bpmjob_wal.wal_group is
+    '分组标识{tenantCode}-{consumerCode}';
 
 comment on column bpmjob_wal.create_datetime is
     '创建时间';

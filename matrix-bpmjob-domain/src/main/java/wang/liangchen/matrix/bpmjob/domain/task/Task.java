@@ -3,7 +3,6 @@ package wang.liangchen.matrix.bpmjob.domain.task;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnState;
-import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 import wang.liangchen.matrix.framework.ddd.domain.AggregateRoot;
 
@@ -24,7 +23,6 @@ public class Task extends RootEntity {
      * PrimaryKey
      */
     @Id
-    @IdStrategy(IdStrategy.Strategy.MatrixFlake)
     @Column(name = "task_id")
     private Long taskId;
     /**
@@ -42,11 +40,6 @@ public class Task extends RootEntity {
      */
     @Column(name = "trigger_id")
     private Long triggerId;
-    /**
-     * PrimaryKey
-     */
-    @Column(name = "wal_id")
-    private Long walId;
     /**
      * 分组标识{tenantCode}-{consumerCode}
      */
@@ -148,13 +141,6 @@ public class Task extends RootEntity {
         this.triggerId = triggerId;
     }
 
-    public Long getWalId() {
-        return this.walId;
-    }
-
-    public void setWalId(Long walId) {
-        this.walId = walId;
-    }
 
     public String getTaskGroup() {
         return this.taskGroup;
@@ -244,7 +230,6 @@ public class Task extends RootEntity {
         builder.append("parentId = ").append(parentId).append(", ");
         builder.append("hostId = ").append(hostId).append(", ");
         builder.append("triggerId = ").append(triggerId).append(", ");
-        builder.append("walId = ").append(walId).append(", ");
         builder.append("taskGroup = ").append(taskGroup).append(", ");
         builder.append("triggerParams = ").append(triggerParams).append(", ");
         builder.append("taskParams = ").append(taskParams).append(", ");

@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 
 /**
  * Write-Ahead Logging
+ *
  * @author Liangchen.Wang 2022-11-08 13:24:45
  */
 @Entity(name = "bpmjob_wal")
@@ -37,6 +38,11 @@ public class Wal extends RootEntity {
     /**
      * 创建时间
      */
+    /**
+     * 分组标识{tenantCode}-{consumerCode}
+     */
+    @Column(name = "wal_group")
+    private String walGroup;
     @Column(name = "create_datetime")
     private LocalDateTime createDatetime;
     /**
@@ -64,9 +70,10 @@ public class Wal extends RootEntity {
     public static Wal newInstance() {
         return ClassUtil.INSTANCE.instantiate(Wal.class);
     }
+
     public static Wal newInstance(boolean initializeFields) {
         Wal entity = ClassUtil.INSTANCE.instantiate(Wal.class);
-        if(initializeFields) {
+        if (initializeFields) {
             entity.initializeFields();
         }
         return entity;
@@ -75,42 +82,63 @@ public class Wal extends RootEntity {
     public Long getWalId() {
         return this.walId;
     }
+
     public void setWalId(Long walId) {
         this.walId = walId;
     }
+
     public Long getHostId() {
         return this.hostId;
     }
+
     public void setHostId(Long hostId) {
         this.hostId = hostId;
     }
+
     public Long getTriggerId() {
         return this.triggerId;
     }
+
     public void setTriggerId(Long triggerId) {
         this.triggerId = triggerId;
     }
+
+    public String getWalGroup() {
+        return walGroup;
+    }
+
+    public void setWalGroup(String walGroup) {
+        this.walGroup = walGroup;
+    }
+
     public LocalDateTime getCreateDatetime() {
         return this.createDatetime;
     }
+
     public void setCreateDatetime(LocalDateTime createDatetime) {
         this.createDatetime = createDatetime;
     }
+
     public LocalDateTime getScheduleDatetime() {
         return this.scheduleDatetime;
     }
+
     public void setScheduleDatetime(LocalDateTime scheduleDatetime) {
         this.scheduleDatetime = scheduleDatetime;
     }
+
     public LocalDateTime getTriggerDatetime() {
         return this.triggerDatetime;
     }
+
     public void setTriggerDatetime(LocalDateTime triggerDatetime) {
         this.triggerDatetime = triggerDatetime;
     }
+
     public Byte getState() {
         return this.state;
     }
+
     public void setState(Byte state) {
         this.state = state;
     }

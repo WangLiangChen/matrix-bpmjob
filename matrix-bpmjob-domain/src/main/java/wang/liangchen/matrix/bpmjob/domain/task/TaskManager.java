@@ -24,7 +24,6 @@ public class TaskManager {
     }
 
     public int add(Task entity) {
-        entity.initializeFields();
         return repository.insert(entity);
     }
 

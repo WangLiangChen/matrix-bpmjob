@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>matrix-bpmjob-trigger-engine</artifactId>
+    <artifactId>matrix-bpmjob-trigger</artifactId>
 
 
     <dependencies>
