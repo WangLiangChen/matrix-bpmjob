@@ -22,15 +22,18 @@
         <module>matrix-bpmjob-trigger</module>
         <module>matrix-bpmjob-console</module>
         <module>matrix-bpmjob-domain</module>
+        <module>matrix-bpmjob-sdk</module>
+        <module>matrix-bpmjob-service</module>
     </modules>
 
     <properties>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss(+8)</maven.build.timestamp.format>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <version.matrix>1.0.0-SNAPSHOT</version.matrix>
-        <version.springboot>2.7.5</version.springboot>
+        <version.matrix.bpmjob>1.0.0-SNAPSHOT</version.matrix.bpmjob>
+        <version.springboot>3.0.0</version.springboot>
         <version.postgresql>42.4.0</version.postgresql>
         <version.mysql>8.0.29</version.mysql>
         <version.protostuff>1.8.0</version.protostuff>
@@ -66,6 +69,17 @@
                 <version>${version.matrix}</version>
             </dependency>
             <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-framework-generator</artifactId>
+                <version>${version.matrix}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-domain</artifactId>
+                <version>${version.matrix.bpmjob}</version>
+            </dependency>
+            <dependency>
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${version.mysql}</version>
@@ -74,12 +88,6 @@
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${version.postgresql}</version>
-            </dependency>
-            <dependency>
-                <groupId>wang.liangchen.matrix</groupId>
-                <artifactId>matrix-framework-generator</artifactId>
-                <version>${version.matrix}</version>
-                <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.protostuff</groupId>

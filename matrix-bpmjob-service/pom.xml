@@ -9,8 +9,10 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>matrix-bpmjob-trigger</artifactId>
+    <artifactId>matrix-bpmjob-service</artifactId>
 
+    <properties>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -19,7 +21,8 @@
         </dependency>
         <dependency>
             <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-bpmjob-domain</artifactId>
+            <artifactId>matrix-framework-web-spring-boot-starter</artifactId>
         </dependency>
     </dependencies>
+
 </project>

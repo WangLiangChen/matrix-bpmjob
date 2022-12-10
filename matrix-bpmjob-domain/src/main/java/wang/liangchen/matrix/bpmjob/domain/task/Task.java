@@ -41,6 +41,10 @@ public class Task extends RootEntity {
     @Column(name = "trigger_id")
     private Long triggerId;
     /**
+     * 主机标识 如hostname等
+     */
+    private String hostLabel;
+    /**
      * 分组标识{tenantCode}-{consumerCode}
      */
     @Column(name = "task_group")
@@ -141,6 +145,13 @@ public class Task extends RootEntity {
         this.triggerId = triggerId;
     }
 
+    public String getHostLabel() {
+        return hostLabel;
+    }
+
+    public void setHostLabel(String hostLabel) {
+        this.hostLabel = hostLabel;
+    }
 
     public String getTaskGroup() {
         return this.taskGroup;

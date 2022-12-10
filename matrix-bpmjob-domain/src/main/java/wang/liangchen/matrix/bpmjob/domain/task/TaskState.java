@@ -6,7 +6,18 @@ import wang.liangchen.matrix.framework.commons.exception.MatrixWarnException;
  * @author Liangchen.Wang 2022-10-22 10:38
  */
 public enum TaskState {
-    UNASSIGNED;
+    /**
+     * 未分配
+     */
+    UNASSIGNED,
+    /**
+     * 已分配未确认
+     */
+    ASSIGNED,
+    /**
+     * 收悉
+     */
+    RECEIVED;
 
     public byte getState() {
         return (byte) (1 << this.ordinal());
