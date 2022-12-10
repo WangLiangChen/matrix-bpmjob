@@ -1,5 +1,9 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
 import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
@@ -9,10 +13,6 @@ import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 import wang.liangchen.matrix.framework.ddd.domain.AggregateRoot;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Version;
 import java.time.LocalDateTime;
 
 /**

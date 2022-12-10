@@ -1,14 +1,14 @@
 package wang.liangchen.matrix.bpmjob.domain.task;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnState;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 import wang.liangchen.matrix.framework.ddd.domain.AggregateRoot;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
 import java.time.LocalDateTime;
 
 /**
@@ -41,9 +41,13 @@ public class Task extends RootEntity {
     @Column(name = "trigger_id")
     private Long triggerId;
     /**
-     * 主机标识 如hostname等
+     * 预期的主机标识
      */
-    private String hostLabel;
+    private String expectedHost;
+    /**
+     * 实际的主机标识
+     */
+    private String actualHost;
     /**
      * 分组标识{tenantCode}-{consumerCode}
      */
@@ -145,12 +149,20 @@ public class Task extends RootEntity {
         this.triggerId = triggerId;
     }
 
-    public String getHostLabel() {
-        return hostLabel;
+    public String getExpectedHost() {
+        return expectedHost;
     }
 
-    public void setHostLabel(String hostLabel) {
-        this.hostLabel = hostLabel;
+    public void setExpectedHost(String expectedHost) {
+        this.expectedHost = expectedHost;
+    }
+
+    public String getActualHost() {
+        return actualHost;
+    }
+
+    public void setActualHost(String actualHost) {
+        this.actualHost = actualHost;
     }
 
     public String getTaskGroup() {

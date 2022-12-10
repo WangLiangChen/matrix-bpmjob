@@ -1,7 +1,6 @@
 package wang.liangchen.matrix.bpmjob.sdk.http;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import wang.liangchen.matrix.bpmjob.sdk.context.SdkProperties;

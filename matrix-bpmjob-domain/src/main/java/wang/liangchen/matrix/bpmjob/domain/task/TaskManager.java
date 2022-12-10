@@ -1,12 +1,12 @@
 package wang.liangchen.matrix.bpmjob.domain.task;
 
+import jakarta.inject.Inject;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import javax.inject.Inject;
 import java.util.List;
 
 

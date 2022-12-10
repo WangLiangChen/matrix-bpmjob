@@ -31,7 +31,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <version.matrix>1.0.0-SNAPSHOT</version.matrix>
+        <version.matrix>2.0.0-SNAPSHOT</version.matrix>
         <version.matrix.bpmjob>1.0.0-SNAPSHOT</version.matrix.bpmjob>
         <version.springboot>3.0.0</version.springboot>
         <version.postgresql>42.4.0</version.postgresql>

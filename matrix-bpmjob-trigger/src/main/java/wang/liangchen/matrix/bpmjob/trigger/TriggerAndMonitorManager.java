@@ -6,9 +6,6 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
-import wang.liangchen.matrix.bpmjob.domain.host.Host;
-import wang.liangchen.matrix.bpmjob.domain.host.HostState;
-import wang.liangchen.matrix.bpmjob.domain.host.HostType;
 import wang.liangchen.matrix.bpmjob.domain.task.Task;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
@@ -26,10 +23,10 @@ import wang.liangchen.matrix.framework.data.util.TransactionUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -45,13 +42,8 @@ public class TriggerAndMonitorManager implements DisposableBean {
     private final TaskManager taskManager;
 
     // Host
-    private final Host host = Host.newInstance();
     private final Long hostId;
     private final String hostLabel;
-    private final Host heartbeatHost = Host.newInstance();
-    private final Host monitorHost = Host.newInstance();
-    private final Short heartbeatInterval = 1;
-    private final ScheduledExecutorService heartbeatScheduler = Executors.newScheduledThreadPool(1, new CustomizableThreadFactory("bpmjob-beat-"));
     // Trigger
     private final Byte triggersAcquireWindow = 15;
     private final Short batchSize = 100;
@@ -62,18 +54,9 @@ public class TriggerAndMonitorManager implements DisposableBean {
     public TriggerAndMonitorManager(StandaloneDao repository, TaskManager taskManager) {
         this.repository = repository;
         this.taskManager = taskManager;
-        registerHost();
-        this.hostId = this.host.getHostId();
-        this.hostLabel = this.host.getHostLabel();
+        this.hostId = 0L;
+        this.hostLabel = NetUtil.INSTANCE.getLocalHostName();
 
-        // 设置心跳默认数据
-        heartbeatHost.setHostId(this.host.getHostId());
-        heartbeatHost.setState(HostState.ONLINE.getState());
-        // 设置僵死状态默认数据
-        monitorHost.setTerminator(this.host.getHostId());
-        monitorHost.setState(HostState.DEAD.getState());
-        // 启动心跳
-        startHeartbeatAndMonitor();
         // 启动触发
         this.triggerThread.start();
     }
@@ -84,85 +67,6 @@ public class TriggerAndMonitorManager implements DisposableBean {
         this.triggerThread.halt();
         logger.info("Waiting for trigger scheduler thread pool shutdown ...");
         jobScheduler.awaitTermination(1, TimeUnit.MINUTES);
-
-        // 停止心跳和监视
-        heartbeatScheduler.shutdown();
-        heartbeatScheduler.awaitTermination(1, TimeUnit.MINUTES);
-        Host entity = Host.newInstance();
-        entity.setHostId(this.host.getHostId());
-        entity.setState(HostState.OFFLINE.getState());
-        entity.setOfflineDatetime(LocalDateTime.now());
-        repository.update(entity);
-    }
-
-    /**
-     * register current host
-     * registered as a new host when startup
-     */
-    private void registerHost() {
-        this.host.setHostType(HostType.TRIGGER.name());
-        this.host.setHostLabel(NetUtil.INSTANCE.getLocalHostName());
-        this.host.setHostIp(NetUtil.INSTANCE.getLocalHostAddress());
-        this.host.setHostPort((short) 0);
-        this.host.setHeartbeatInterval(heartbeatInterval);
-        this.host.setState(HostState.ONLINE.getState());
-        this.host.initializeFields();
-        repository.insert(host);
-        logger.info("register host:{},{}", host.getHostId(), host.getHostLabel());
-    }
-
-    /**
-     * keepalive by heartbeat
-     */
-    private void startHeartbeatAndMonitor() {
-        heartbeatScheduler.scheduleWithFixedDelay(() -> {
-            heartbeat();
-            monitor();
-        }, 0, heartbeatInterval, TimeUnit.SECONDS);
-    }
-
-    private void heartbeat() {
-        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        heartbeatHost.setHeartbeatDatetime(now);
-        heartbeatHost.setHeartbeatInterval(heartbeatInterval);
-        repository.update(heartbeatHost);
-        logger.debug("heartbeat:{},{}", host.getHostId(), host.getHostLabel());
-    }
-
-    private void monitor() {
-        // 终止状态为"online"且两个周期没有心跳的其它节点
-        // 1、获取所有状态为online的数据，java判断周期差
-        // 2、数据库判断状态为online和周期差
-        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        List<Host> hosts = repository.list(Criteria.of(Host.class)
-                .resultFields(Host::getHostId)
-                ._equals(Host::getState, HostState.ONLINE.getState())
-                ._lessThan(Host::getHeartbeatDatetime, now.minusSeconds(3L * heartbeatInterval)));
-        Set<Long> hostIds = hosts.stream().map(Host::getHostId)
-                .filter(e -> !e.equals(this.host.getHostId())).collect(Collectors.toSet());
-        logger.debug("monitor hosts:{},{},{}", host.getHostId(), host.getHostLabel(), hostIds);
-        terminateHosts(hostIds);
-    }
-
-    /**
-     * Terminate Hosts
-     * State transfer from online to dead
-     *
-     * @param hostIds Terminating hosts
-     */
-    private void terminateHosts(Set<Long> hostIds) {
-        // 终结超时没有心跳的节点，使用状态迁移：online->dead 抢占
-        for (Long hostId : hostIds) {
-            monitorHost.setDeadDatetime(LocalDateTime.now());
-            int rows = repository.update(UpdateCriteria.of(monitorHost)
-                    ._equals(Host::getHostId, hostId)
-                    ._equals(Host::getState, HostState.ONLINE.getState())
-            );
-            if (rows == 1) {
-                logger.info("terminate host:{},{},{}", host.getHostId(), host.getHostLabel(), hostId);
-                //TODO 终结主机后，要承担它原有的任务
-            }
-        }
     }
 
     /**
@@ -181,16 +85,17 @@ public class TriggerAndMonitorManager implements DisposableBean {
 
         @Override
         public void run() {
-            /*--------------------------acquire triggers and fire-------------------------------*/
+            /*--------------------------acquire triggers-------------------------------*/
             long acquireRetryCount = 0;
             while (true) {
                 List<Long> triggerIds;
                 try {
                     if (acquireRetryCount > 0) {
-                        ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 15);
+                        ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 10);
                     }
                     triggerIds = acquireTriggers();
                     logger.info("Triggers acquired: {}", triggerIds);
+                    // reset
                     acquireRetryCount = 0;
                     if (CollectionUtil.INSTANCE.isEmpty(triggerIds)) {
                         logger.info("Triggers acquired are empty.delay and then retry");
@@ -204,17 +109,17 @@ public class TriggerAndMonitorManager implements DisposableBean {
                 /*--------------------------依次在独立事务中抢占触发权后触发-------------------------------*/
                 for (Long triggerId : triggerIds) {
                     try {
-                        // 获得触发权&创建WAL
+                        // 获得触发权 & 创建WAL
                         exclusiveTrigger(triggerId);
                         ThreadUtil.INSTANCE.sleep(TimeUnit.MILLISECONDS, 50);
                     } catch (Exception e) {
                         logger.error("ExclusiveTrigger failed.Trigger: " + triggerId, e);
                     }
                 }
-                /*--------------------------acquire wals and redo-------------------------------*/
+                /*--------------------------acquire expired wals and redo-------------------------------*/
                 List<Long> walIds = null;
                 try {
-                    walIds = acquireWals();
+                    walIds = acquireExpiredWals();
                     logger.info("wals acquired: {}", walIds);
                 } catch (Exception e) {
                     logger.error("AcquireWals failed.", e);
@@ -222,7 +127,7 @@ public class TriggerAndMonitorManager implements DisposableBean {
                 if (null != walIds && !walIds.isEmpty()) {
                     for (Long walId : walIds) {
                         try {
-                            redoTask(walId);
+                            redoWal(walId);
                         } catch (Exception e) {
                             logger.error("redoTask failed.Wal: " + walId, e);
                         }
@@ -257,7 +162,7 @@ public class TriggerAndMonitorManager implements DisposableBean {
 
         private void exclusiveTrigger(Long triggerId) {
             Trigger trigger = repository.select(Criteria.of(Trigger.class)
-                    .resultFields(Trigger::getTriggerId, Trigger::getTriggerExpression, Trigger::getTriggerNext,
+                    .resultFields(Trigger::getTriggerId, Trigger::getTriggerGroup, Trigger::getTriggerExpression, Trigger::getTriggerNext,
                             Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getTriggerParams, Trigger::getState)
                     ._equals(Trigger::getTriggerId, triggerId));
             if (null == trigger) {
@@ -326,10 +231,10 @@ public class TriggerAndMonitorManager implements DisposableBean {
             return 1 == rows;
         }
 
-        private List<Long> acquireWals() {
+        private List<Long> acquireExpiredWals() {
             LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
             // 当前时间之前1S应该已经创建任务的Wal getScheduleDatetime
-            LocalDateTime range = now.minusSeconds(1);
+            LocalDateTime range = now.minus(500, ChronoUnit.MILLIS);
             Criteria<Wal> criteria = Criteria.of(Wal.class)
                     // id only
                     .resultFields(Wal::getWalId)
@@ -342,10 +247,10 @@ public class TriggerAndMonitorManager implements DisposableBean {
             return walIds;
         }
 
-        private void redoTask(Long walId) {
+        private void redoWal(Long walId) {
             // TODO 补充需要wal返回的字段
             Wal wal = repository.select(Criteria.of(Wal.class)
-                    .resultFields(Wal::getWalId)
+                    .resultFields(Wal::getWalId, Wal::getHostLabel)
                     ._equals(Wal::getWalId, walId));
             if (null == wal) {
                 logger.info("Wal '{}' doesn't exist,Maybe It has been confirmed.skipped by Host:{}", walId, hostLabel);
@@ -368,7 +273,6 @@ public class TriggerAndMonitorManager implements DisposableBean {
         }
 
         private void scheduleTrigger(Wal wal, long delayMS) {
-            // TODO 根据wal判断是否是redo
             if (delayMS < 100) {
                 logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), hostLabel);
                 jobScheduler.execute(() -> confirmWalAndCreateTask(wal));
@@ -382,6 +286,7 @@ public class TriggerAndMonitorManager implements DisposableBean {
             Wal wal = Wal.newInstance();
             wal.setTriggerId(trigger.getTriggerId());
             wal.setHostId(hostId);
+            wal.setHostLabel(hostLabel);
             wal.setWalGroup(trigger.getTriggerGroup());
             LocalDateTime now = LocalDateTime.now();
             wal.setCreateDatetime(now);
@@ -416,6 +321,8 @@ public class TriggerAndMonitorManager implements DisposableBean {
             task.setTaskId(wal.getWalId());
             task.setParentId(0L);
             task.setHostId(hostId);
+            task.setExpectedHost(wal.getHostLabel());
+            task.setActualHost(hostLabel);
             task.setTriggerId(wal.getTriggerId());
             task.setTaskGroup("N/A");
             task.setTriggerParams("");
