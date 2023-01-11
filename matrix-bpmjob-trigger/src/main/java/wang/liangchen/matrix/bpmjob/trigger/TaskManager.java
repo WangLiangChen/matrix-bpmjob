@@ -6,7 +6,7 @@ import wang.liangchen.matrix.bpmjob.domain.task.TaskState;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 
 /**

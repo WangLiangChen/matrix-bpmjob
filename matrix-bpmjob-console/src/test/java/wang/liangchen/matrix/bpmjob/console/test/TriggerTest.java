@@ -8,7 +8,7 @@ import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 
 /**

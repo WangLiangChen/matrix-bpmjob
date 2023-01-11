@@ -6,7 +6,7 @@ import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.util.List;
 
 

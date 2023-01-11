@@ -22,7 +22,8 @@ import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 import wang.liangchen.matrix.framework.data.util.TransactionUtil;
 import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -49,7 +50,7 @@ public class TriggerManager implements DisposableBean {
     private final Byte triggersAcquireInterval = 15;
     private final Short batchSize = 100;
     private final TriggerThread triggerThread = new TriggerThread();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(32, new CustomizableThreadFactory("job-scheduler-"));
+    private final ScheduledExecutorService triggerPool = Executors.newScheduledThreadPool(32, new CustomizableThreadFactory("job-scheduler-"));
 
     @Inject
     public TriggerManager(StandaloneDao repository, HostManager hostManager, TaskManager taskManager) {
@@ -66,7 +67,7 @@ public class TriggerManager implements DisposableBean {
         // halt TriggerThread
         this.triggerThread.halt();
         logger.info("Waiting for scheduler thread pool shutdown ...");
-        scheduler.awaitTermination(1, TimeUnit.MINUTES);
+        triggerPool.awaitTermination(1, TimeUnit.MINUTES);
     }
 
     /**
@@ -85,7 +86,7 @@ public class TriggerManager implements DisposableBean {
 
         @Override
         public void run() {
-            /*--------------------------acquire triggers and fire-------------------------------*/
+            /*--------------------------acquire eligible triggers-------------------------------*/
             long acquireRetryCount = 0;
             while (true) {
                 List<Long> triggerIds;
@@ -105,7 +106,7 @@ public class TriggerManager implements DisposableBean {
                     logger.error("AcquireTriggers failed.Retry: " + acquireRetryCount, e);
                     continue;
                 }
-                // 依次在独立事务中抢占触发权后触发
+                /*--------------------------exclusive trigger and fire it-------------------------------*/
                 for (Long triggerId : triggerIds) {
                     try {
                         exclusiveTrigger(triggerId);
@@ -113,7 +114,7 @@ public class TriggerManager implements DisposableBean {
                         logger.error("ExclusiveTrigger failed.Trigger: " + triggerId, e);
                     }
                 }
-                /*--------------------------acquire wals and redo-------------------------------*/
+                /*--------------------------acquire missed wals-------------------------------*/
                 List<Long> walIds = null;
                 try {
                     walIds = acquireWals();
@@ -121,20 +122,22 @@ public class TriggerManager implements DisposableBean {
                 } catch (Exception e) {
                     logger.error("AcquireWals failed.", e);
                 }
-                if (null != walIds && !walIds.isEmpty()) {
+                /*--------------------------redo wals-------------------------------*/
+                if (CollectionUtil.INSTANCE.isNotEmpty(walIds)) {
                     for (Long walId : walIds) {
                         try {
-                            redoTask(walId);
+                            redoWal(walId);
                         } catch (Exception e) {
-                            logger.error("redoTask failed.Wal: " + walId, e);
+                            logger.error("redoWal failed.Wal: " + walId, e);
                         }
                     }
                 }
+
                 /*--------------------------shutdown-------------------------------*/
-                // shutdown threadpool and break when execution complete.
+                // shutdown threadpool and halt this thread when execution complete.
                 if (halted) {
                     logger.info("TriggerThread is halted. Shutdown...");
-                    scheduler.shutdown();
+                    triggerPool.shutdown();
                     break;
                 }
             }
@@ -152,26 +155,13 @@ public class TriggerManager implements DisposableBean {
                 ._equals(Trigger::getState, TriggerState.NORMAL)
                 .pageSize(batchSize).pageNumber(1);
         List<Trigger> triggers = repository.list(criteria);
+        if (CollectionUtil.INSTANCE.isEmpty(triggers)) {
+            return Collections.emptyList();
+        }
         List<Long> triggerIds = triggers.stream().map(Trigger::getTriggerId).collect(Collectors.toList());
         // 乱序
         Collections.shuffle(triggerIds);
         return triggerIds;
-    }
-
-    private List<Long> acquireWals() {
-        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        // 当前时间之前1S的Wal
-        LocalDateTime range = now.minusSeconds(1);
-        Criteria<Wal> criteria = Criteria.of(Wal.class)
-                // id only
-                .resultFields(Wal::getWalId)
-                ._lessThan(Wal::getScheduleDatetime, range)
-                .pageSize(batchSize).pageNumber(1);
-        List<Wal> wals = repository.list(criteria);
-        List<Long> walIds = wals.stream().map(Wal::getWalId).collect(Collectors.toList());
-        // 乱序
-        Collections.shuffle(walIds);
-        return walIds;
     }
 
     private void exclusiveTrigger(Long triggerId) {
@@ -179,16 +169,16 @@ public class TriggerManager implements DisposableBean {
                 .resultFields(Trigger::getTriggerId, Trigger::getTriggerExpression, Trigger::getTriggerNext, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getTriggerParams, Trigger::getState)
                 ._equals(Trigger::getTriggerId, triggerId));
         if (null == trigger) {
-            logger.info("Trigger '{}' doesn't exist,skipped by Host:{}", triggerId, hostLabel);
+            logger.info("The trigger '{}' doesn't exist,skipped by Host:{}", triggerId, hostLabel);
             return;
         }
 
-        if (!Objects.equals(TriggerState.NORMAL.name(), trigger.getState().name())) {
-            logger.info("Trigger '{}' isn't NORMAL,skipped by Host:{}", triggerId, hostLabel);
+        if (!Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key())) {
+            logger.info("The state of trigger '{}' isn't NORMAL,skipped by Host:{}", triggerId, hostLabel);
             return;
         }
 
-        logger.info("Trigger '{}' is desired by Host:{}", triggerId, hostLabel);
+        logger.info("The trigger '{}' is desired by Host:{}", triggerId, hostLabel);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime triggerNext = trigger.getTriggerNext();
         long delayMS = Duration.between(now, triggerNext).toMillis();
@@ -203,14 +193,14 @@ public class TriggerManager implements DisposableBean {
         // 在同一事务中,通过update抢占操作权和创建预写日志
         Wal wal = TransactionUtil.INSTANCE.execute(() -> {
             boolean renew = renewTriggerNext(triggerId, triggerNext, newTriggerNext);
-            if (!renew) {
-                logger.info("Exclusive Trigger Failure. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-                return null;
+            if (renew) {
+                logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
+                Wal innerWal = createWal(trigger);
+                logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
+                return innerWal;
             }
-            logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-            Wal innerWal = createWal(trigger);
-            logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
-            return innerWal;
+            logger.info("Exclusive Trigger Failure. Trigger:{}, Host:{}", triggerId, this.hostLabel);
+            return null;
         });
         if (null == wal) {
             return;
@@ -224,12 +214,12 @@ public class TriggerManager implements DisposableBean {
 
         // immediate
         if (delayMS > -missThresholdMS && delayMS <= 0) {
-            scheduleTrigger(wal, 0L);
+            offerDelayQueue(wal, 0L);
             return;
         }
 
         // schedule
-        scheduleTrigger(wal, delayMS);
+        offerDelayQueue(wal, delayMS);
     }
 
     private boolean renewTriggerNext(Long triggerId, LocalDateTime triggerNext, LocalDateTime newTriggerNext) {
@@ -243,41 +233,34 @@ public class TriggerManager implements DisposableBean {
         return 1 == rows;
     }
 
-
-    private void redoTask(Long walId) {
-        // TODO 补充wal返回的字段
-        Wal wal = repository.select(Criteria.of(Wal.class)
+    private List<Long> acquireWals() {
+        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
+        // 当前时间之前1S的Wal
+        LocalDateTime range = now.minusSeconds(1);
+        Criteria<Wal> criteria = Criteria.of(Wal.class)
+                // id only
                 .resultFields(Wal::getWalId)
+                ._lessThan(Wal::getScheduleDatetime, range)
+                .pageSize(batchSize).pageNumber(1);
+        List<Wal> wals = repository.list(criteria);
+        if (CollectionUtil.INSTANCE.isEmpty(wals)) {
+            return Collections.emptyList();
+        }
+        List<Long> walIds = wals.stream().map(Wal::getWalId).collect(Collectors.toList());
+        // 乱序
+        Collections.shuffle(walIds);
+        return walIds;
+    }
+
+    private void redoWal(Long walId) {
+        Wal wal = repository.select(Criteria.of(Wal.class)
                 ._equals(Wal::getWalId, walId));
         if (null == wal) {
             logger.info("Wal '{}' doesn't exist,Maybe It has been confirmed.skipped by Host:{}", walId, hostLabel);
             return;
         }
         logger.info("Wal '{}' is desired by Host:{}", walId, hostLabel);
-        scheduleTrigger(wal, 0L);
-    }
-
-    private void missTrigger(Wal wal, Trigger trigger) {
-        MissStrategy missStrategy = trigger.getMissStrategy();
-        logger.info("MissStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missStrategy, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-        switch (missStrategy) {
-            case COMPENSATE:
-                scheduleTrigger(wal, 0L);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void scheduleTrigger(Wal wal, long delayMS) {
-        // TODO 根据wal判断是否是redo
-        if (delayMS < 100) {
-            logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            scheduler.execute(() -> confirmWalAndCreateTask(wal));
-        } else {
-            logger.info("create asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            scheduler.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
-        }
+        offerDelayQueue(wal, 0L);
     }
 
     private Wal createWal(Trigger trigger) {
@@ -292,6 +275,33 @@ public class TriggerManager implements DisposableBean {
         wal.setState(WalState.ACQUIRED.getState());
         repository.insert(wal);
         return wal;
+    }
+
+
+    private void missTrigger(Wal wal, Trigger trigger) {
+        MissStrategy missStrategy = trigger.getMissStrategy();
+        logger.info("MissStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missStrategy, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+        switch (missStrategy) {
+            case COMPENSATE:
+                offerDelayQueue(wal, 0L);
+                break;
+            case SKIP:
+                logger.warn("Skip missed trigger: {}", trigger.getTriggerId());
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    private void offerDelayQueue(Wal wal, long delayMS) {
+        if (delayMS < 100) {
+            logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+            triggerPool.execute(() -> confirmWalAndCreateTask(wal));
+        } else {
+            logger.info("create asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+            triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
+        }
     }
 
     private void confirmWalAndCreateTask(Wal wal) {
