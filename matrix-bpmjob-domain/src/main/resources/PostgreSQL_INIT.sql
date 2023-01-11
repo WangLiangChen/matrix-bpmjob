@@ -1,4 +1,10 @@
 /*==============================================================*/
+/* DBMS name:      PostgreSQL 9.x                               */
+/* Created on:     2022/12/12 11:57:04                          */
+/*==============================================================*/
+
+
+/*==============================================================*/
 /* Table: bpmjob_consumer                                       */
 /*==============================================================*/
 create table if not exists bpmjob_consumer
@@ -19,28 +25,22 @@ create table if not exists bpmjob_consumer
     state           varchar(36)  not null
 );
 
-comment
-    on table bpmjob_consumer is
+comment on table bpmjob_consumer is
     'app/client/consumer';
 
-comment
-    on column bpmjob_consumer.consumer_id is
+comment on column bpmjob_consumer.consumer_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_consumer.tenant_id is
+comment on column bpmjob_consumer.tenant_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_consumer.tenant_code is
+comment on column bpmjob_consumer.tenant_code is
     '租户唯一标识';
 
-comment
-    on column bpmjob_consumer.consumer_code is
+comment on column bpmjob_consumer.consumer_code is
     '唯一标识';
 
-comment
-    on column bpmjob_consumer.consumer_name is
+comment on column bpmjob_consumer.consumer_name is
     '名称';
 
 /*==============================================================*/
@@ -70,12 +70,8 @@ create unique index if not exists bpmjob_consumer_ak on bpmjob_consumer (
 /*==============================================================*/
 create table if not exists bpmjob_host
 (
-    host_id
-                       int8
-                                    not
-                                        null,
-    host_type
-                       varchar(36)  not null,
+    host_id            int8         not null,
+    host_type          varchar(36)  not null,
     host_group         varchar(73)  not null,
     host_label         varchar(100) not null,
     host_ip            varchar(36)  not null,
@@ -87,67 +83,50 @@ create table if not exists bpmjob_host
     dead_datetime      timestamp    not null,
     terminator         int8         not null,
     state              int2         not null,
-    constraint pk_bpmjob_host primary key
-        (
-         host_id
-            )
+    constraint pk_bpmjob_host primary key (host_id)
 );
 
-comment
-    on table bpmjob_host is
+comment on table bpmjob_host is
     '主机注册:TRIGGER;CONSOLE;CONSUMER;
     每次启动都新注册一个';
 
-comment
-    on column bpmjob_host.host_id is
+comment on column bpmjob_host.host_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_host.host_type is
+comment on column bpmjob_host.host_type is
     'TRIGGER;CONSOLE;CONSUMER';
 
-comment
-    on column bpmjob_host.host_group is
+comment on column bpmjob_host.host_group is
     '分组标识{tenantCode}-{consumerCode}';
 
-comment
-    on column bpmjob_host.host_label is
+comment on column bpmjob_host.host_label is
     '标识 如hostname等';
 
-comment
-    on column bpmjob_host.host_ip is
+comment on column bpmjob_host.host_ip is
     '节点可以用于通讯的ip地址';
 
-comment
-    on column bpmjob_host.host_port is
+comment on column bpmjob_host.host_port is
     '节点可以用于通讯的端口';
 
-comment
-    on column bpmjob_host.heartbeat_interval is
+comment on column bpmjob_host.heartbeat_interval is
     '心跳间隔单位(S)';
 
-comment
-    on column bpmjob_host.online_datetime is
+comment on column bpmjob_host.online_datetime is
     '上线时间';
 
-comment
-    on column bpmjob_host.heartbeat_datetime is
+comment on column bpmjob_host.heartbeat_datetime is
     '心跳时间';
 
-comment
-    on column bpmjob_host.offline_datetime is
+comment on column bpmjob_host.offline_datetime is
     '离线时间';
 
-comment
-    on column bpmjob_host.dead_datetime is
+comment on column bpmjob_host.dead_datetime is
     '僵死时间';
 
-comment
-    on column bpmjob_host.terminator is
+comment on column bpmjob_host.terminator is
     '节点终结者registry_id';
 
-comment
-    on column bpmjob_host.state is
+comment on column bpmjob_host.state is
     '节点状态1-在线 2-离线 4-僵死';
 
 /*==============================================================*/
@@ -172,82 +151,67 @@ create table if not exists bpmjob_task
     trigger_params    varchar(1000) not null,
     task_params       varchar(1000) not null,
     parent_params     varchar(1000) not null,
+    sharding_number   int2          not null,
     create_datetime   timestamp     not null,
     assign_datetime   timestamp     not null,
     ack_datetime      timestamp     not null,
     complete_datetime timestamp     not null,
     progress          int2          not null,
-    state             int2          not null,
-    constraint pk_bpmjob_task primary key
-        (
-         task_id
-            )
+    state             int2          not null
 );
 
-comment
-    on table bpmjob_task is
+comment on table bpmjob_task is
     '触发任务';
 
-comment
-    on column bpmjob_task.task_id is
+comment on column bpmjob_task.task_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_task.host_id is
+comment on column bpmjob_task.host_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_task.trigger_id is
+comment on column bpmjob_task.trigger_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_task.parent_id is
+comment on column bpmjob_task.parent_id is
     'PrimaryKey';
-comment
-    on column bpmjob_task.expected_host is
+
+comment on column bpmjob_task.expected_host is
     '预期的host标识';
-comment
-    on column bpmjob_task.actual_host is
+
+comment on column bpmjob_task.actual_host is
     '实际的host标识';
 
-comment
-    on column bpmjob_task.task_group is
+comment on column bpmjob_task.task_group is
     '分组标识{tenantCode}-{consumerCode}';
 
-comment
-    on column bpmjob_task.trigger_params is
+comment on column bpmjob_task.trigger_params is
     '触发器参数';
 
-comment
-    on column bpmjob_task.task_params is
+comment on column bpmjob_task.task_params is
     '任务参数';
 
-comment
-    on column bpmjob_task.parent_params is
+comment on column bpmjob_task.parent_params is
     '父级任务/上一任务参数';
 
-comment
-    on column bpmjob_task.create_datetime is
+comment on column bpmjob_task.sharding_number is
+    '分片序号;子任务序号';
+
+comment on column bpmjob_task.create_datetime is
     '创建时间';
 
-comment
-    on column bpmjob_task.assign_datetime is
+comment on column bpmjob_task.assign_datetime is
     '分配时间';
 
-comment
-    on column bpmjob_task.ack_datetime is
+comment on column bpmjob_task.ack_datetime is
     '分配后,消费端确认时间';
 
-comment
-    on column bpmjob_task.complete_datetime is
+comment on column bpmjob_task.complete_datetime is
     '完成时间';
 
-comment
-    on column bpmjob_task.progress is
+comment on column bpmjob_task.progress is
     '进度百分比-乘以100之后的值';
 
-comment
-    on column bpmjob_task.state is
+comment on column bpmjob_task.state is
     '状态';
 
 /*==============================================================*/
@@ -278,23 +242,15 @@ create index if not exists host_task_fk on bpmjob_task (
                                                         host_id
     );
 
-
 /*==============================================================*/
 /* Table: bpmjob_tenant                                         */
 /*==============================================================*/
 create table if not exists bpmjob_tenant
 (
-    tenant_id
-                    int8
-                                 not
-                                     null,
-    tenant_code
-                    varchar(36)  not null,
+    tenant_id       int8         not null,
+    tenant_code     varchar(36)  not null,
     tenant_name     varchar(36)  not null,
-    constraint pk_bpmjob_tenant primary key
-        (
-         tenant_id
-            ),
+    constraint pk_bpmjob_tenant primary key (tenant_id),
     version         int4         not null default 0,
     owner           varchar(60)  not null default '',
     creator         varchar(60)  not null default '',
@@ -305,20 +261,16 @@ create table if not exists bpmjob_tenant
     state           varchar(36)  not null
 );
 
-comment
-    on table bpmjob_tenant is
+comment on table bpmjob_tenant is
     '租户';
 
-comment
-    on column bpmjob_tenant.tenant_id is
+comment on column bpmjob_tenant.tenant_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_tenant.tenant_code is
+comment on column bpmjob_tenant.tenant_code is
     '唯一标识';
 
-comment
-    on column bpmjob_tenant.tenant_name is
+comment on column bpmjob_tenant.tenant_name is
     '名称';
 
 /*==============================================================*/
@@ -345,16 +297,18 @@ create table if not exists bpmjob_trigger
     trigger_name       varchar(36)   not null,
     trigger_type       varchar(20)   not null,
     trigger_expression varchar(36)   not null,
-    trigger_next       timestamp     not null,
+    executor_type      varchar(20)   not null,
+    executor_settings  varchar(50)   not null,
     miss_threshold     int2          not null,
     miss_strategy      varchar(36)   not null,
+    assign_strategy    varchar(36)   not null,
+    sharding_strategy  varchar(36)   not null,
+    sharding_number    int2          not null,
     trigger_params     varchar(1000) not null,
-    task_settings      varchar(1000) not null,
     extended_settings  varchar(1000) not null,
-    constraint pk_bpmjob_trigger primary key
-        (
-         trigger_id
-            ),
+    task_settings      varchar(1000) not null,
+    trigger_next       timestamp     not null,
+    constraint pk_bpmjob_trigger primary key (trigger_id),
     version            int4          not null default 0,
     owner              varchar(60)   not null default '',
     creator            varchar(60)   not null default '',
@@ -365,53 +319,56 @@ create table if not exists bpmjob_trigger
     state              varchar(36)   not null
 );
 
-comment
-    on table bpmjob_trigger is
+comment on table bpmjob_trigger is
     '触发器';
 
-comment
-    on column bpmjob_trigger.trigger_id is
+comment on column bpmjob_trigger.trigger_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_trigger.trigger_group is
+comment on column bpmjob_trigger.trigger_group is
     '分组标识{tenantCode}-{consumerCode}';
 
-comment
-    on column bpmjob_trigger.trigger_name is
+comment on column bpmjob_trigger.trigger_name is
     '名称';
 
-comment
-    on column bpmjob_trigger.trigger_type is
-    '触发器类型:FIXRATE;CRON;';
+comment on column bpmjob_trigger.trigger_type is
+    '类型:API;CRON;FIXRATE;FIXDELAY';
 
-comment
-    on column bpmjob_trigger.trigger_expression is
+comment on column bpmjob_trigger.trigger_expression is
     '不同的触发器类型对应的表达式FIXRATE:1S 1M 1H 1D';
 
-comment
-    on column bpmjob_trigger.trigger_next is
-    '下次预期触发时间';
+comment on column bpmjob_trigger.executor_type is
+    '执行器类型:JAVA_EXECUTOR;SCRIPT_EXECUTOR';
 
-comment
-    on column bpmjob_trigger.miss_threshold is
+comment on column bpmjob_trigger.executor_settings is
+    '不同的执行器类型对应的配置';
+
+comment on column bpmjob_trigger.miss_threshold is
     '错失触发的阈值,单位S';
 
-comment
-    on column bpmjob_trigger.miss_strategy is
+comment on column bpmjob_trigger.miss_strategy is
     '触发错失处理策略';
 
-comment
-    on column bpmjob_trigger.trigger_params is
+comment on column bpmjob_trigger.assign_strategy is
+    '任务分配策略';
+
+comment on column bpmjob_trigger.sharding_strategy is
+    '分片策略AUTO-自动;PROGRAM-编程式';
+
+comment on column bpmjob_trigger.sharding_number is
+    '分片数;子任务数;0-不分片,不能创建子任务';
+
+comment on column bpmjob_trigger.trigger_params is
     '触发参数';
 
-comment
-    on column bpmjob_trigger.task_settings is
-    '任务参数(类型、策略、配置等)';
-
-comment
-    on column bpmjob_trigger.extended_settings is
+comment on column bpmjob_trigger.extended_settings is
     '扩展配置';
+
+comment on column bpmjob_trigger.task_settings is
+    '任务扩展配置';
+
+comment on column bpmjob_trigger.trigger_next is
+    '下次预期触发时间';
 
 /*==============================================================*/
 /* Index: bpmjob_trigger_pk                                     */
@@ -425,66 +382,46 @@ create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (
 /*==============================================================*/
 create table if not exists bpmjob_wal
 (
-    wal_id
-                      int8
-                                   not
-                                       null,
-    host_id
-                      int8
-                                   null,
-    trigger_id
-                      int8
-                                   null,
+    wal_id            int8         not null,
+    host_id           int8         null,
+    trigger_id        int8         null,
     host_label        varchar(100) not null,
-    wal_group
-                      varchar(73)  not null,
+    wal_group         varchar(73)  not null,
     create_datetime   timestamp    not null,
     schedule_datetime timestamp    not null,
     trigger_datetime  timestamp    not null,
     state             int2         not null,
-    constraint pk_bpmjob_wal primary key
-        (
-         wal_id
-            )
+    constraint pk_bpmjob_wal primary key (wal_id)
 );
 
-comment
-    on table bpmjob_wal is
+comment on table bpmjob_wal is
     'Write-Ahead Logging';
 
-comment
-    on column bpmjob_wal.wal_id is
+comment on column bpmjob_wal.wal_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_wal.host_id is
+comment on column bpmjob_wal.host_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_wal.trigger_id is
+comment on column bpmjob_wal.trigger_id is
     'PrimaryKey';
 
-comment
-    on column bpmjob_wal.host_label is
-    '主机标识';
-comment
-    on column bpmjob_wal.wal_group is
+comment on column bpmjob_wal.host_label is
+    '标识 如hostname等';
+
+comment on column bpmjob_wal.wal_group is
     '分组标识{tenantCode}-{consumerCode}';
 
-comment
-    on column bpmjob_wal.create_datetime is
+comment on column bpmjob_wal.create_datetime is
     '创建时间';
 
-comment
-    on column bpmjob_wal.schedule_datetime is
+comment on column bpmjob_wal.schedule_datetime is
     '预期触发时间';
 
-comment
-    on column bpmjob_wal.trigger_datetime is
+comment on column bpmjob_wal.trigger_datetime is
     '实际触发时间';
 
-comment
-    on column bpmjob_wal.state is
+comment on column bpmjob_wal.state is
     '1-acquired;2-triggered';
 
 /*==============================================================*/

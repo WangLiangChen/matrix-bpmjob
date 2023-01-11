@@ -4,7 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Version;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.AssignStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.SharingStrategy;
+import wang.liangchen.matrix.bpmjob.domain.trigger.fields.ExtendedSettings;
+import wang.liangchen.matrix.bpmjob.domain.trigger.fields.TaskSettings;
+import wang.liangchen.matrix.bpmjob.domain.trigger.fields.TriggerParams;
 import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
@@ -17,6 +22,7 @@ import java.time.LocalDateTime;
 
 /**
  * 触发器
+ *
  * @author Liangchen.Wang 2022-11-08 13:24:45
  */
 @AggregateRoot
@@ -27,100 +33,87 @@ public class Trigger extends RootEntity {
      */
     @Id
     @IdStrategy(IdStrategy.Strategy.MatrixFlake)
-    @Column(name = "trigger_id")
     private Long triggerId;
     /**
      * 分组标识{tenantCode}-{consumerCode}
      */
-    @Column(name = "trigger_group")
     private String triggerGroup;
     /**
      * 名称
      */
-    @Column(name = "trigger_name")
     private String triggerName;
     /**
-     * 触发器类型:FIXRATE;CRON;
+     * 触发器类型:API;CRONFIX;RATE;FIXDELAY;
      */
-    @Column(name = "trigger_type")
     private String triggerType;
     /**
      * 不同的触发器类型对应的表达式FIXRATE:1S 1M 1H 1D
      */
-    @Column(name = "trigger_expression")
     private String triggerExpression;
+
     /**
-     * 下次预期触发时间
+     * 执行器类型:JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
-    @Column(name = "trigger_next")
-    private LocalDateTime triggerNext;
+    private String executor_type;
+    /**
+     * 执行器配置 不同的执行器对应不同的配置
+     */
+    private String executor_settings;
     /**
      * 错失触发的阈值,单位S
      */
-    @Column(name = "miss_threshold")
     private Byte missThreshold;
     /**
      * 触发错失处理策略
      */
-    @Column(name = "miss_strategy")
     private MissStrategy missStrategy;
+    /**
+     * 任务分配策略
+     */
+    private AssignStrategy assignStrategy;
+    /**
+     * 分片策略
+     */
+    private SharingStrategy sharingStrategy;
+    /**
+     * 分片数；0-不分片和不允许创建子任务
+     */
+    private Short shardingNumber;
     /**
      * 触发参数
      */
-    @Column(name = "trigger_params")
-    private String triggerParams;
-    /**
-     * 任务参数(类型、策略、配置等)
-     */
-    @Column(name = "task_settings")
-    private String taskSettings;
+    private TriggerParams triggerParams;
     /**
      * 扩展配置
      */
-    @Column(name = "extended_settings")
-    private String extendedSettings;
+    private ExtendedSettings extendedSettings;
     /**
-     * 
+     * 任务扩展配置(类型、策略、配置等)
+     */
+    private TaskSettings taskSettings;
+
+    /**
+     * 下次预期触发时间
+     */
+    private LocalDateTime triggerNext;
+    /**
      * 版本列
      * 更新和删除时,非空则启用乐观锁
      */
     @Version
-    @Column(name = "version")
     private Integer version;
-    /**
-     * 
-     */
-    @Column(name = "owner")
+
     private String owner;
-    /**
-     * 
-     */
-    @Column(name = "creator")
+
     private String creator;
-    /**
-     * 
-     */
-    @Column(name = "create_datetime")
+
     private LocalDateTime createDatetime;
-    /**
-     * 
-     */
-    @Column(name = "modifier")
+
     private String modifier;
-    /**
-     * 
-     */
-    @Column(name = "modify_datetime")
+
     private LocalDateTime modifyDatetime;
-    /**
-     * 
-     */
-    @Column(name = "summary")
+
     private String summary;
-    /**
-     * 
-     * 状态列
-     */
     @ColumnState
     @Column(name = "state")
     private ConstantEnum state;
@@ -132,154 +125,204 @@ public class Trigger extends RootEntity {
     public static Trigger newInstance() {
         return ClassUtil.INSTANCE.instantiate(Trigger.class);
     }
+
     public static Trigger newInstance(boolean initializeFields) {
         Trigger entity = ClassUtil.INSTANCE.instantiate(Trigger.class);
-        if(initializeFields) {
+        if (initializeFields) {
             entity.initializeFields();
         }
         return entity;
     }
 
     public Long getTriggerId() {
-        return this.triggerId;
+        return triggerId;
     }
+
     public void setTriggerId(Long triggerId) {
         this.triggerId = triggerId;
     }
+
     public String getTriggerGroup() {
-        return this.triggerGroup;
+        return triggerGroup;
     }
+
     public void setTriggerGroup(String triggerGroup) {
         this.triggerGroup = triggerGroup;
     }
+
     public String getTriggerName() {
-        return this.triggerName;
+        return triggerName;
     }
+
     public void setTriggerName(String triggerName) {
         this.triggerName = triggerName;
     }
+
     public String getTriggerType() {
-        return this.triggerType;
+        return triggerType;
     }
+
     public void setTriggerType(String triggerType) {
         this.triggerType = triggerType;
     }
+
     public String getTriggerExpression() {
-        return this.triggerExpression;
+        return triggerExpression;
     }
+
     public void setTriggerExpression(String triggerExpression) {
         this.triggerExpression = triggerExpression;
     }
-    public LocalDateTime getTriggerNext() {
-        return this.triggerNext;
+
+    public String getExecutor_type() {
+        return executor_type;
     }
-    public void setTriggerNext(LocalDateTime triggerNext) {
-        this.triggerNext = triggerNext;
+
+    public void setExecutor_type(String executor_type) {
+        this.executor_type = executor_type;
     }
+
+    public String getExecutor_settings() {
+        return executor_settings;
+    }
+
+    public void setExecutor_settings(String executor_settings) {
+        this.executor_settings = executor_settings;
+    }
+
     public Byte getMissThreshold() {
-        return this.missThreshold;
+        return missThreshold;
     }
+
     public void setMissThreshold(Byte missThreshold) {
         this.missThreshold = missThreshold;
     }
+
     public MissStrategy getMissStrategy() {
-        return this.missStrategy;
+        return missStrategy;
     }
+
     public void setMissStrategy(MissStrategy missStrategy) {
         this.missStrategy = missStrategy;
     }
-    public String getTriggerParams() {
-        return this.triggerParams;
+
+    public AssignStrategy getAssignStrategy() {
+        return assignStrategy;
     }
-    public void setTriggerParams(String triggerParams) {
+
+    public void setAssignStrategy(AssignStrategy assignStrategy) {
+        this.assignStrategy = assignStrategy;
+    }
+
+    public SharingStrategy getSharingStrategy() {
+        return sharingStrategy;
+    }
+
+    public void setSharingStrategy(SharingStrategy sharingStrategy) {
+        this.sharingStrategy = sharingStrategy;
+    }
+
+    public Short getShardingNumber() {
+        return shardingNumber;
+    }
+
+    public void setShardingNumber(Short shardingNumber) {
+        this.shardingNumber = shardingNumber;
+    }
+
+    public TriggerParams getTriggerParams() {
+        return triggerParams;
+    }
+
+    public void setTriggerParams(TriggerParams triggerParams) {
         this.triggerParams = triggerParams;
     }
-    public String getTaskSettings() {
-        return this.taskSettings;
+
+    public ExtendedSettings getExtendedSettings() {
+        return extendedSettings;
     }
-    public void setTaskSettings(String taskSettings) {
-        this.taskSettings = taskSettings;
-    }
-    public String getExtendedSettings() {
-        return this.extendedSettings;
-    }
-    public void setExtendedSettings(String extendedSettings) {
+
+    public void setExtendedSettings(ExtendedSettings extendedSettings) {
         this.extendedSettings = extendedSettings;
     }
-    public Integer getVersion() {
-        return this.version;
+
+    public TaskSettings getTaskSettings() {
+        return taskSettings;
     }
+
+    public void setTaskSettings(TaskSettings taskSettings) {
+        this.taskSettings = taskSettings;
+    }
+
+    public LocalDateTime getTriggerNext() {
+        return triggerNext;
+    }
+
+    public void setTriggerNext(LocalDateTime triggerNext) {
+        this.triggerNext = triggerNext;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
     public void setVersion(Integer version) {
         this.version = version;
     }
+
     public String getOwner() {
-        return this.owner;
+        return owner;
     }
+
     public void setOwner(String owner) {
         this.owner = owner;
     }
+
     public String getCreator() {
-        return this.creator;
+        return creator;
     }
+
     public void setCreator(String creator) {
         this.creator = creator;
     }
+
     public LocalDateTime getCreateDatetime() {
-        return this.createDatetime;
+        return createDatetime;
     }
+
     public void setCreateDatetime(LocalDateTime createDatetime) {
         this.createDatetime = createDatetime;
     }
+
     public String getModifier() {
-        return this.modifier;
+        return modifier;
     }
+
     public void setModifier(String modifier) {
         this.modifier = modifier;
     }
+
     public LocalDateTime getModifyDatetime() {
-        return this.modifyDatetime;
+        return modifyDatetime;
     }
+
     public void setModifyDatetime(LocalDateTime modifyDatetime) {
         this.modifyDatetime = modifyDatetime;
     }
+
     public String getSummary() {
-        return this.summary;
+        return summary;
     }
+
     public void setSummary(String summary) {
         this.summary = summary;
     }
+
     public ConstantEnum getState() {
-        return this.state;
-    }
-    public void setState(ConstantEnum state) {
-        this.state = state;
+        return state;
     }
 
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Trigger{");
-        builder.append("triggerId = ").append(triggerId).append(", ");
-        builder.append("triggerGroup = ").append(triggerGroup).append(", ");
-        builder.append("triggerName = ").append(triggerName).append(", ");
-        builder.append("triggerType = ").append(triggerType).append(", ");
-        builder.append("triggerExpression = ").append(triggerExpression).append(", ");
-        builder.append("triggerNext = ").append(triggerNext).append(", ");
-        builder.append("missThreshold = ").append(missThreshold).append(", ");
-        builder.append("missStrategy = ").append(missStrategy).append(", ");
-        builder.append("triggerParams = ").append(triggerParams).append(", ");
-        builder.append("taskSettings = ").append(taskSettings).append(", ");
-        builder.append("extendedSettings = ").append(extendedSettings).append(", ");
-        builder.append("version = ").append(version).append(", ");
-        builder.append("owner = ").append(owner).append(", ");
-        builder.append("creator = ").append(creator).append(", ");
-        builder.append("createDatetime = ").append(createDatetime).append(", ");
-        builder.append("modifier = ").append(modifier).append(", ");
-        builder.append("modifyDatetime = ").append(modifyDatetime).append(", ");
-        builder.append("summary = ").append(summary).append(", ");
-        builder.append("state = ").append(state).append(", ");
-        builder.deleteCharAt(builder.length() - 1);
-        builder.append("}");
-        return builder.toString();
+    public void setState(ConstantEnum state) {
+        this.state = state;
     }
 }
