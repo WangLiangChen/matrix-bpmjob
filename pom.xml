@@ -5,7 +5,7 @@
     <groupId>wang.liangchen.matrix</groupId>
     <artifactId>matrix-bpmjob</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
 
     <developers>
         <developer>
@@ -27,10 +27,10 @@
     <properties>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss(+8)</maven.build.timestamp.format>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <version.matrix>1.0.0-SNAPSHOT</version.matrix>
-        <version.springboot>2.7.5</version.springboot>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <version.matrix>2.0.0-SNAPSHOT</version.matrix>
+        <version.springboot>3.0.1</version.springboot>
         <version.postgresql>42.4.0</version.postgresql>
         <version.mysql>8.0.29</version.mysql>
         <version.protostuff>1.8.0</version.protostuff>
