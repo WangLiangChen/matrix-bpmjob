@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.host.Host;
 import wang.liangchen.matrix.bpmjob.domain.task.Task;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
+import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerInstant;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
@@ -89,15 +90,15 @@ public class TriggerManager implements DisposableBean {
             /*--------------------------acquire eligible triggers-------------------------------*/
             long acquireRetryCount = 0;
             while (true) {
-                List<Long> triggerIds;
+                List<TriggerInstant> triggerInstants;
                 try {
                     if (acquireRetryCount > 0) {
                         ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 15);
                     }
-                    triggerIds = acquireTriggers();
-                    logger.info("Triggers acquired: {}", triggerIds);
+                    triggerInstants = acquireTriggerInstants();
+                    logger.info("Triggers acquired: {}", triggerInstants);
                     acquireRetryCount = 0;
-                    if (CollectionUtil.INSTANCE.isEmpty(triggerIds)) {
+                    if (CollectionUtil.INSTANCE.isEmpty(triggerInstants)) {
                         logger.info("Triggers acquired are empty.delay and then retry");
                         ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 1);
                     }
@@ -107,9 +108,9 @@ public class TriggerManager implements DisposableBean {
                     continue;
                 }
                 /*--------------------------exclusive trigger and fire it-------------------------------*/
-                for (Long triggerId : triggerIds) {
+                for (TriggerInstant triggerInstant : triggerInstants) {
                     try {
-                        exclusiveTrigger(triggerId);
+                        exclusiveTrigger(triggerInstant);
                     } catch (Exception e) {
                         logger.error("ExclusiveTrigger failed.Trigger: " + triggerId, e);
                     }
@@ -144,29 +145,27 @@ public class TriggerManager implements DisposableBean {
         }
     }
 
-    private List<Long> acquireTriggers() {
+    private List<TriggerInstant> acquireTriggerInstants() {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
         // 未来15S之前应该触发的所有触发器
         LocalDateTime range = now.plusSeconds(triggersAcquireInterval);
-        Criteria<Trigger> criteria = Criteria.of(Trigger.class)
-                // id only
-                .resultFields(Trigger::getTriggerId)
-                ._lessThan(Trigger::getTriggerNext, range)
-                ._equals(Trigger::getState, TriggerState.NORMAL)
+        Criteria<TriggerInstant> criteria = Criteria.of(TriggerInstant.class).resultFields(TriggerInstant::getTriggerId)
+                ._lessThan(TriggerInstant::getTriggerInstant, range)
                 .pageSize(batchSize).pageNumber(1);
-        List<Trigger> triggers = repository.list(criteria);
-        if (CollectionUtil.INSTANCE.isEmpty(triggers)) {
+        List<TriggerInstant> triggerInstants = repository.list(criteria);
+        if (CollectionUtil.INSTANCE.isEmpty(triggerInstants)) {
             return Collections.emptyList();
         }
-        List<Long> triggerIds = triggers.stream().map(Trigger::getTriggerId).collect(Collectors.toList());
         // 乱序
-        Collections.shuffle(triggerIds);
-        return triggerIds;
+        Collections.shuffle(triggerInstants);
+        return triggerInstants;
     }
 
-    private void exclusiveTrigger(Long triggerId) {
+    private void exclusiveTrigger(TriggerInstant triggerInstant ) {
+        Long triggerId = triggerInstant.getTriggerId();
+        LocalDateTime triggerInstantTime = triggerInstant.getTriggerInstant();
         Trigger trigger = repository.select(Criteria.of(Trigger.class)
-                .resultFields(Trigger::getTriggerId, Trigger::getTriggerExpression, Trigger::getTriggerNext, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getTriggerParams, Trigger::getState)
+                .resultFields(Trigger::getTriggerId, Trigger::getTriggerExpression, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getTriggerParams, Trigger::getState)
                 ._equals(Trigger::getTriggerId, triggerId));
         if (null == trigger) {
             logger.info("The trigger '{}' doesn't exist,skipped by Host:{}", triggerId, hostLabel);
@@ -180,7 +179,7 @@ public class TriggerManager implements DisposableBean {
 
         logger.info("The trigger '{}' is desired by Host:{}", triggerId, hostLabel);
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime triggerNext = trigger.getTriggerNext();
+        LocalDateTime triggerNext = triggerInstantTime;
         long delayMS = Duration.between(now, triggerNext).toMillis();
         long missThresholdMS = trigger.getMissThreshold() * 1000;
         LocalDateTime newTriggerNext;

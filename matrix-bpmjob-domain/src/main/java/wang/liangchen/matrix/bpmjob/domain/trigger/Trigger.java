@@ -50,11 +50,6 @@ public class Trigger extends RootEntity {
     @Column(name = "trigger_expression")
     private String triggerExpression;
     /**
-     * 下次预期触发时间
-     */
-    @Column(name = "trigger_next")
-    private LocalDateTime triggerNext;
-    /**
      * 错失触发的阈值,单位S
      */
     @Column(name = "miss_threshold")
@@ -170,12 +165,6 @@ public class Trigger extends RootEntity {
     public void setTriggerExpression(String triggerExpression) {
         this.triggerExpression = triggerExpression;
     }
-    public LocalDateTime getTriggerNext() {
-        return this.triggerNext;
-    }
-    public void setTriggerNext(LocalDateTime triggerNext) {
-        this.triggerNext = triggerNext;
-    }
     public Byte getMissThreshold() {
         return this.missThreshold;
     }
@@ -264,7 +253,6 @@ public class Trigger extends RootEntity {
         builder.append("triggerName = ").append(triggerName).append(", ");
         builder.append("triggerType = ").append(triggerType).append(", ");
         builder.append("triggerExpression = ").append(triggerExpression).append(", ");
-        builder.append("triggerNext = ").append(triggerNext).append(", ");
         builder.append("missThreshold = ").append(missThreshold).append(", ");
         builder.append("missStrategy = ").append(missStrategy).append(", ");
         builder.append("triggerParams = ").append(triggerParams).append(", ");
