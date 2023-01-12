@@ -368,27 +368,27 @@ create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (
     );
 
 /*==============================================================*/
-/* Table: bpmjob_trigger_instant                                */
+/* Table: bpmjob_trigger_time                                */
 /*==============================================================*/
-create table if not exists bpmjob_trigger_instant
+create table if not exists bpmjob_trigger_time
 (
     trigger_id      int8         not null,
     trigger_instant timestamp    not null
 );
 
-comment on table bpmjob_trigger_instant is
+comment on table bpmjob_trigger_time is
     'trigger触发时刻,需特别注意数据的新增和删除';
 
-comment on column bpmjob_trigger_instant.trigger_id is
+comment on column bpmjob_trigger_time.trigger_id is
     'PrimaryKey';
 
-comment on column bpmjob_trigger_instant.trigger_instant is
+comment on column bpmjob_trigger_time.trigger_instant is
     '预期触发时间';
 
 /*==============================================================*/
-/* Index: bpmjob_trigger_instant_pk                             */
+/* Index: bpmjob_trigger_time_pk                             */
 /*==============================================================*/
-create unique index if not exists bpmjob_trigger_instant_pk on bpmjob_trigger_instant (
+create unique index if not exists bpmjob_trigger_time_pk on bpmjob_trigger_time (
                                                                                        trigger_id
     );
 
@@ -430,10 +430,10 @@ comment on column bpmjob_wal.create_datetime is
     '创建时间';
 
 comment on column bpmjob_wal.schedule_datetime is
-    '预期触发时间';
+    '实际调度时间';
 
 comment on column bpmjob_wal.trigger_datetime is
-    '实际触发时间';
+    '预期触发时间';
 
 comment on column bpmjob_wal.state is
     '1-acquired;2-triggered';

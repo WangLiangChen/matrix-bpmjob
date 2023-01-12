@@ -2,7 +2,6 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 
@@ -13,8 +12,8 @@ import java.time.LocalDateTime;
  *
  * @author Liangchen.Wang 2022-11-08 13:24:45
  */
-@Entity(name = "bpmjob_trigger_instant")
-public class TriggerInstant extends RootEntity {
+@Entity(name = "bpmjob_trigger_time")
+public class TriggerTime extends RootEntity {
     /**
      * PrimaryKey
      */
@@ -26,12 +25,12 @@ public class TriggerInstant extends RootEntity {
     private LocalDateTime triggerInstant;
 
 
-    public static TriggerInstant newInstance() {
-        return ClassUtil.INSTANCE.instantiate(TriggerInstant.class);
+    public static TriggerTime newInstance() {
+        return ClassUtil.INSTANCE.instantiate(TriggerTime.class);
     }
 
-    public static TriggerInstant newInstance(boolean initializeFields) {
-        TriggerInstant entity = ClassUtil.INSTANCE.instantiate(TriggerInstant.class);
+    public static TriggerTime newInstance(boolean initializeFields) {
+        TriggerTime entity = ClassUtil.INSTANCE.instantiate(TriggerTime.class);
         if (initializeFields) {
             entity.initializeFields();
         }

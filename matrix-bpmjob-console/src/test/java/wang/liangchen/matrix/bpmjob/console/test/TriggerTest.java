@@ -1,5 +1,6 @@
 package wang.liangchen.matrix.bpmjob.console.test;
 
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.scheduling.support.CronExpression;
@@ -8,7 +9,6 @@ import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 
 /**

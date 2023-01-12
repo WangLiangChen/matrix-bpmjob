@@ -1,5 +1,6 @@
 package wang.liangchen.matrix.bpmjob.domain.host;
 
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
@@ -7,9 +8,7 @@ import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
-import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import jakarta.inject.Inject;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,7 +18,6 @@ import java.util.concurrent.ScheduledExecutorService;
  * @author Liangchen.Wang
  */
 @Service
-@DomainService
 public class HostManager {
     private final static Logger logger = LoggerFactory.getLogger(HostManager.class);
     private final StandaloneDao repository;

@@ -1,15 +1,14 @@
 package wang.liangchen.matrix.bpmjob.domain.host;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnState;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
-import wang.liangchen.matrix.framework.ddd.domain.AggregateRoot;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import java.time.LocalDateTime;
 
 /**
@@ -17,7 +16,6 @@ import java.time.LocalDateTime;
     每次启动都新注册一个
  * @author Liangchen.Wang 2022-11-08 13:24:45
  */
-@AggregateRoot
 @Entity(name = "bpmjob_host")
 public class Host extends RootEntity {
     /**

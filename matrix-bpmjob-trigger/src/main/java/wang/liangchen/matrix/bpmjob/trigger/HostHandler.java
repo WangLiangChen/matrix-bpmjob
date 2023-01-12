@@ -1,5 +1,6 @@
 package wang.liangchen.matrix.bpmjob.trigger;
 
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
@@ -13,9 +14,7 @@ import wang.liangchen.matrix.framework.commons.network.NetUtil;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
-import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import jakarta.inject.Inject;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -28,10 +27,9 @@ import java.util.stream.Collectors;
 /**
  * @author Liangchen.Wang
  */
-@Service("Trigger_HostManager")
-@DomainService
-public class HostManager implements DisposableBean {
-    private final static Logger logger = LoggerFactory.getLogger(HostManager.class);
+@Service
+public class HostHandler implements DisposableBean {
+    private final static Logger logger = LoggerFactory.getLogger(HostHandler.class);
     private final StandaloneDao repository;
     private final Host heartbeatHost = Host.newInstance();
     private final Host host = Host.newInstance();
@@ -41,7 +39,7 @@ public class HostManager implements DisposableBean {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2, new CustomizableThreadFactory("job-beat-"));
 
     @Inject
-    public HostManager(StandaloneDao repository) {
+    public HostHandler(StandaloneDao repository) {
         this.repository = repository;
         registerHost();
         // 设置心跳默认数据

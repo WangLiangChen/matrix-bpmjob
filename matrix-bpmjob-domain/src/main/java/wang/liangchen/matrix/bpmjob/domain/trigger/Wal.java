@@ -1,14 +1,14 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnState;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import java.time.LocalDateTime;
 
 /**

@@ -1,12 +1,11 @@
 package wang.liangchen.matrix.bpmjob.domain.task;
 
+import jakarta.inject.Inject;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
-import wang.liangchen.matrix.framework.ddd.domain.DomainService;
 
-import jakarta.inject.Inject;
 import java.util.List;
 
 
@@ -14,7 +13,6 @@ import java.util.List;
  * @author Liangchen.Wang
  */
 @Service
-@DomainService
 public class TaskManager {
     private final StandaloneDao repository;
 
@@ -23,7 +21,7 @@ public class TaskManager {
         this.repository = repository;
     }
 
-    public int add(Task entity) {
+    public int createTask(Task entity) {
         return repository.insert(entity);
     }
 
