@@ -8,7 +8,6 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.host.Host;
-import wang.liangchen.matrix.bpmjob.domain.task.Task;
 import wang.liangchen.matrix.bpmjob.domain.task.TaskManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerManager;
@@ -37,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class TriggerHandler implements DisposableBean {
     private final static Logger logger = LoggerFactory.getLogger(TriggerHandler.class);
+    private final Host host;
     private final Long hostId;
     private final String hostLabel;
     private final TriggerManager triggerManager;
@@ -52,7 +52,7 @@ public class TriggerHandler implements DisposableBean {
     public TriggerHandler(TriggerManager triggerManager, TaskManager taskManager, HostHandler hostHandler) {
         this.triggerManager = triggerManager;
         this.taskManager = taskManager;
-        Host host = hostHandler.getHost();
+        this.host = hostHandler.getHost();
         this.hostId = host.getHostId();
         this.hostLabel = host.getHostLabel();
         // start thread
@@ -221,18 +221,18 @@ public class TriggerHandler implements DisposableBean {
 
         // miss
         if (delayMS <= -missThresholdMS) {
-            missTrigger(wal, trigger);
+            missTrigger(trigger, wal);
             return;
         }
 
         // immediate
         if (delayMS > -missThresholdMS && delayMS <= 0) {
-            offerDelayQueue(wal, 0L);
+            offerDelayQueue(trigger, wal, 0L);
             return;
         }
 
         // schedule
-        offerDelayQueue(wal, delayMS);
+        offerDelayQueue(trigger, wal, delayMS);
     }
 
     private List<Long> acquireEligibleWals() {
@@ -267,12 +267,12 @@ public class TriggerHandler implements DisposableBean {
     }
 
 
-    private void missTrigger(Wal wal, Trigger trigger) {
+    private void missTrigger(Trigger trigger, Wal wal) {
         MissStrategy missStrategy = trigger.getMissStrategy();
         logger.info("MissStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missStrategy, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
         switch (missStrategy) {
             case COMPENSATE:
-                offerDelayQueue(wal, 0L);
+                offerDelayQueue(trigger, wal, 0L);
                 break;
             case SKIP:
                 logger.warn("Skip missed trigger: {}", trigger.getTriggerId());
@@ -283,17 +283,17 @@ public class TriggerHandler implements DisposableBean {
     }
 
 
-    private void offerDelayQueue(Wal wal, long delayMS) {
+    private void offerDelayQueue(Trigger trigger, Wal wal, long delayMS) {
         if (delayMS < 100) {
             logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            triggerPool.execute(() -> confirmWalAndCreateTask(wal));
+            triggerPool.execute(() -> confirmWalAndCreateTask(trigger, wal));
         } else {
             logger.info("create asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
+            triggerPool.schedule(() -> confirmWalAndCreateTask(trigger, wal), delayMS, TimeUnit.MILLISECONDS);
         }
     }
 
-    private void confirmWalAndCreateTask(Wal wal) {
+    private void confirmWalAndCreateTask(Trigger trigger, Wal wal) {
         Long walId = wal.getWalId();
         // 同一事务确认(删除)Wal和创建任务
         TransactionUtil.INSTANCE.execute(() -> {
@@ -303,7 +303,7 @@ public class TriggerHandler implements DisposableBean {
                 logger.info("ConfirmWal failed.Maybe It has been confirmed.Wal: {}", walId);
                 return;
             }
-            createTask(wal);
+            taskManager.createTask(trigger, wal, host);
             logger.info("Task created.Task: {}", walId);
         });
     }
@@ -312,16 +312,4 @@ public class TriggerHandler implements DisposableBean {
         return triggerManager.deleteWal(wal.getWalId());
     }
 
-    private void createTask(Wal wal) {
-        Task task = Task.newInstance();
-        task.setTaskId(wal.getWalId());
-        task.setParentId(0L);
-        task.setHostId(this.hostId);
-        task.setTriggerId(wal.getTriggerId());
-        task.setTaskGroup("N/A");
-        task.setTriggerParams("");
-        task.setTaskParams("");
-        task.setParentParams("");
-        taskManager.createTask(task);
-    }
 }

@@ -2,10 +2,14 @@ package wang.liangchen.matrix.bpmjob.domain.task;
 
 import jakarta.inject.Inject;
 import org.springframework.stereotype.Service;
+import wang.liangchen.matrix.bpmjob.domain.host.Host;
+import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
+import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -21,8 +25,28 @@ public class TaskManager {
         this.repository = repository;
     }
 
-    public int createTask(Task entity) {
-        return repository.insert(entity);
+    public int createTask(Trigger trigger, Wal wal, Host host) {
+        Task task = Task.newInstance();
+        task.setTaskId(wal.getWalId());
+        task.setParentId(0L);
+        task.setHostId(host.getHostId());
+        task.setTriggerId(trigger.getTriggerId());
+        task.setExpectedHost(wal.getHostLabel());
+        task.setActualHost(host.getHostLabel());
+        task.setTaskGroup(wal.getWalGroup());
+        task.setTriggerParams(trigger.getTriggerParams());
+        task.setTaskParams("");
+        task.setParentParams("");
+        task.setShardingNumber((byte) 0);
+
+        LocalDateTime now = LocalDateTime.now();
+        task.setCreateDatetime(now);
+        task.setAssignDatetime(now);
+        task.setAckDatetime(now);
+        task.setCompleteDatetime(now);
+        task.setProgress((short) 0);
+        task.setState(TaskState.UNASSIGNED.getState());
+        return repository.insert(task);
     }
 
     public int delete(Long taskId) {

@@ -1,11 +1,8 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
-import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.DeleteCriteria;
@@ -13,7 +10,6 @@ import wang.liangchen.matrix.framework.data.dao.criteria.EntityGetter;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +19,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class TriggerManager {
-    private final static Logger logger = LoggerFactory.getLogger(TriggerManager.class);
     private final StandaloneDao repository;
 
     @Inject
@@ -61,9 +56,6 @@ public class TriggerManager {
                 ._lessThan(Wal::getScheduleDatetime, duration)
                 .pageSize(batchSize).pageNumber(1);
         List<Wal> wals = this.repository.list(criteria);
-        if (CollectionUtil.INSTANCE.isEmpty(wals)) {
-            return Collections.emptyList();
-        }
         return wals.stream().map(Wal::getWalId).collect(Collectors.toList());
     }
 
