@@ -45,6 +45,7 @@ public class TriggerHandler implements DisposableBean {
     private final Byte triggersAcquireInterval = 15;
     private final Short batchSize = 100;
     private final TriggerThread triggerThread = new TriggerThread();
+    private final WalThread walThread = new WalThread();
     private final ScheduledExecutorService triggerPool = Executors.newScheduledThreadPool(32, new CustomizableThreadFactory("job-scheduler-"));
 
     @Inject
@@ -56,24 +57,24 @@ public class TriggerHandler implements DisposableBean {
         this.hostLabel = host.getHostLabel();
         // start thread
         this.triggerThread.start();
+        this.walThread.start();
     }
 
     @Override
     public void destroy() throws Exception {
-        // halt TriggerThread
+        // halt Thread
+        this.walThread.halt();
         this.triggerThread.halt();
-        logger.info("Waiting for trigger thread pool shutdown ...");
-        triggerPool.awaitTermination(1, TimeUnit.MINUTES);
+        logger.info("Waiting for thread pool shutdown ...");
+        this.triggerPool.shutdown();
+        this.triggerPool.awaitTermination(1, TimeUnit.MINUTES);
     }
 
-    /**
-     * Trigger main process
-     */
     private class TriggerThread extends Thread {
         private boolean halted = false;
 
-        public TriggerThread() {
-            super("job-scheduler");
+        TriggerThread() {
+            super("job-monitor");
         }
 
         void halt() {
@@ -82,23 +83,30 @@ public class TriggerHandler implements DisposableBean {
 
         @Override
         public void run() {
-            /*--------------------------acquire eligible triggers-------------------------------*/
-            long acquireRetryCount = 0;
+            long sleep = 0;
             while (true) {
+                /*--------------------------halted and break-------------------------------*/
+                if (this.halted) {
+                    logger.info("The WalThread is halted. Shutdown...");
+                    break;
+                }
+                /*--------------------------need sleep become some reasons-------------------------------*/
+                if (sleep > 0) {
+                    ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, sleep);
+                    sleep = 0;
+                }
+                /*--------------------------acquire eligible triggers-------------------------------*/
                 List<TriggerTime> triggerTimes;
                 try {
-                    if (acquireRetryCount > 0) {
-                        ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 15);
-                    }
                     triggerTimes = acquireTriggerTimes();
-                    acquireRetryCount = 0;
                     if (CollectionUtil.INSTANCE.isEmpty(triggerTimes)) {
-                        logger.info("Triggers acquired are empty.delay and then retry");
-                        ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, 1);
+                        sleep = 1;
+                        logger.info("Triggers acquisition empty.delay '{}s' and then retry", sleep);
+                        continue;
                     }
                 } catch (Exception e) {
-                    acquireRetryCount++;
-                    logger.error("AcquireTriggers failed.Retry: " + acquireRetryCount, e);
+                    sleep = 15;
+                    logger.error("Triggers acquisition failed.delay '{}s' and then retry", sleep);
                     continue;
                 }
                 /*--------------------------exclusive trigger and fire it-------------------------------*/
@@ -106,37 +114,64 @@ public class TriggerHandler implements DisposableBean {
                     try {
                         exclusiveTrigger(triggerTime);
                     } catch (Exception e) {
-                        logger.error("ExclusiveTrigger failed.Trigger: " + triggerTime.getTriggerId(), e);
+                        logger.error("Trigger exclusive failure.Trigger: " + triggerTime.getTriggerId(), e);
                     }
-                }
-                /*--------------------------acquire missed wals-------------------------------*/
-                List<Long> walIds = null;
-                try {
-                    walIds = acquireWals();
-                } catch (Exception e) {
-                    logger.error("AcquireWals failed.", e);
-                }
-                /*--------------------------redo wals-------------------------------*/
-                if (CollectionUtil.INSTANCE.isNotEmpty(walIds)) {
-                    for (Long walId : walIds) {
-                        try {
-                            redoWal(walId);
-                        } catch (Exception e) {
-                            logger.error("redoWal failed.Wal: " + walId, e);
-                        }
-                    }
-                }
-
-                /*--------------------------shutdown-------------------------------*/
-                // shutdown threadpool and halt this thread when execution complete.
-                if (halted) {
-                    logger.info("TriggerThread is halted. Shutdown...");
-                    triggerPool.shutdown();
-                    break;
                 }
             }
         }
     }
+
+    private class WalThread extends Thread {
+        private boolean halted = false;
+
+        WalThread() {
+            super("wal-monitor");
+        }
+
+        void halt() {
+            this.halted = true;
+        }
+
+        @Override
+        public void run() {
+            long sleep = 0;
+            while (true) {
+                /*--------------------------halted and break-------------------------------*/
+                if (this.halted) {
+                    logger.info("The WalThread is halted. Shutdown...");
+                    break;
+                }
+                /*--------------------------need sleep become some reasons-------------------------------*/
+                if (sleep > 0) {
+                    ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, sleep);
+                    sleep = 0;
+                }
+                /*--------------------------acquire missed wals-------------------------------*/
+                List<Long> walIds;
+                try {
+                    walIds = acquireEligibleWals();
+                    if (CollectionUtil.INSTANCE.isEmpty(walIds)) {
+                        sleep = 1;
+                        logger.info("Wals acquisition empty.delay '{}s' and then retry", sleep);
+                        continue;
+                    }
+                } catch (Exception e) {
+                    sleep = 15;
+                    logger.error("Wals acquisition failed.delay '{}s' and then retry", sleep);
+                    continue;
+                }
+                /*--------------------------redo wals-------------------------------*/
+                for (Long walId : walIds) {
+                    try {
+                        redoWal(walId);
+                    } catch (Exception e) {
+                        logger.error("redoWal failed.Wal: " + walId, e);
+                    }
+                }
+            }
+        }
+    }
+
 
     private List<TriggerTime> acquireTriggerTimes() {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
@@ -164,13 +199,10 @@ public class TriggerHandler implements DisposableBean {
         LocalDateTime triggerInstant = triggerTime.getTriggerInstant();
         long delayMS = Duration.between(now, triggerInstant).toMillis();
         long missThresholdMS = trigger.getMissThreshold() * 1000;
-        LocalDateTime nextTriggerInstant;
-        if (delayMS <= -missThresholdMS) {
-            // missed,benchmark is now
-            nextTriggerInstant = CronExpression.parse(trigger.getTriggerExpression()).next(now);
-        } else {
-            nextTriggerInstant = CronExpression.parse(trigger.getTriggerExpression()).next(triggerInstant);
-        }
+        // parse the next trigger instant, if missed,benchmark is now
+        LocalDateTime parseBenchmark = delayMS <= -missThresholdMS ? now : triggerInstant;
+        LocalDateTime nextTriggerInstant = CronExpression.parse(trigger.getTriggerExpression()).next(parseBenchmark);
+
         // 在同一事务中,通过update抢占操作权和创建预写日志
         Wal wal = TransactionUtil.INSTANCE.execute(() -> {
             boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
@@ -203,7 +235,7 @@ public class TriggerHandler implements DisposableBean {
         offerDelayQueue(wal, delayMS);
     }
 
-    private List<Long> acquireWals() {
+    private List<Long> acquireEligibleWals() {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
         // 当前时间之前1S的Wal
         LocalDateTime duration = now.minusSeconds(1);
@@ -227,6 +259,7 @@ public class TriggerHandler implements DisposableBean {
         Wal wal = Wal.newInstance();
         wal.setTriggerId(trigger.getTriggerId());
         wal.setHostId(this.hostId);
+        wal.setHostLabel(this.hostLabel);
         wal.setWalGroup(trigger.getTriggerGroup());
         wal.setTriggerDatetime(triggerInstant);
         triggerManager.createWal(wal);

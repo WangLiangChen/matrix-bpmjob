@@ -1,11 +1,9 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
-import wang.liangchen.matrix.framework.data.annotation.ColumnState;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 
@@ -23,44 +21,36 @@ public class Wal extends RootEntity {
      */
     @Id
     @IdStrategy(IdStrategy.Strategy.MatrixFlake)
-    @Column(name = "wal_id")
     private Long walId;
     /**
      * PrimaryKey
      */
-    @Column(name = "host_id")
     private Long hostId;
     /**
      * PrimaryKey
      */
-    @Column(name = "trigger_id")
     private Long triggerId;
-    /**
-     * 创建时间
-     */
+    private String hostLabel;
     /**
      * 分组标识{tenantCode}-{consumerCode}
      */
-    @Column(name = "wal_group")
     private String walGroup;
-    @Column(name = "create_datetime")
+    /**
+     * 创建时间
+     */
     private LocalDateTime createDatetime;
+    /**
+     * 实际调度时间
+     */
+    private LocalDateTime scheduleDatetime;
     /**
      * 预期触发时间
      */
-    @Column(name = "schedule_datetime")
-    private LocalDateTime scheduleDatetime;
-    /**
-     * 实际触发时间
-     */
-    @Column(name = "trigger_datetime")
     private LocalDateTime triggerDatetime;
     /**
      * 1-acquired;2-triggered
      * 状态列
      */
-    @ColumnState
-    @Column(name = "state")
     private Byte state;
 
     public static Wal valueOf(Object source) {
@@ -101,6 +91,14 @@ public class Wal extends RootEntity {
 
     public void setTriggerId(Long triggerId) {
         this.triggerId = triggerId;
+    }
+
+    public String getHostLabel() {
+        return hostLabel;
+    }
+
+    public void setHostLabel(String hostLabel) {
+        this.hostLabel = hostLabel;
     }
 
     public String getWalGroup() {
@@ -149,6 +147,7 @@ public class Wal extends RootEntity {
         builder.append("Wal{");
         builder.append("walId = ").append(walId).append(", ");
         builder.append("hostId = ").append(hostId).append(", ");
+        builder.append("hostLabel = ").append(hostLabel).append(", ");
         builder.append("triggerId = ").append(triggerId).append(", ");
         builder.append("createDatetime = ").append(createDatetime).append(", ");
         builder.append("scheduleDatetime = ").append(scheduleDatetime).append(", ");
