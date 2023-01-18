@@ -208,7 +208,7 @@ public class TriggerHandler implements DisposableBean {
             boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
             if (renew) {
                 logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-                Wal innerWal = createWal(trigger, triggerInstant);
+                Wal innerWal = triggerManager.createWal(trigger, triggerInstant, this.host);
                 logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
                 return innerWal;
             }
@@ -227,12 +227,12 @@ public class TriggerHandler implements DisposableBean {
 
         // immediate
         if (delayMS > -missThresholdMS && delayMS <= 0) {
-            offerDelayQueue(trigger, wal, 0L);
+            offerDelayQueue(wal, 0L);
             return;
         }
 
         // schedule
-        offerDelayQueue(trigger, wal, delayMS);
+        offerDelayQueue(wal, delayMS);
     }
 
     private List<Long> acquireEligibleWals() {
@@ -255,24 +255,13 @@ public class TriggerHandler implements DisposableBean {
         offerDelayQueue(wal, 0L);
     }
 
-    private Wal createWal(Trigger trigger, LocalDateTime triggerInstant) {
-        Wal wal = Wal.newInstance();
-        wal.setTriggerId(trigger.getTriggerId());
-        wal.setHostId(this.hostId);
-        wal.setHostLabel(this.hostLabel);
-        wal.setWalGroup(trigger.getTriggerGroup());
-        wal.setTriggerDatetime(triggerInstant);
-        triggerManager.createWal(wal);
-        return wal;
-    }
-
 
     private void missTrigger(Trigger trigger, Wal wal) {
         MissStrategy missStrategy = trigger.getMissStrategy();
         logger.info("MissStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missStrategy, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
         switch (missStrategy) {
             case COMPENSATE:
-                offerDelayQueue(trigger, wal, 0L);
+                offerDelayQueue(wal, 0L);
                 break;
             case SKIP:
                 logger.warn("Skip missed trigger: {}", trigger.getTriggerId());
@@ -283,17 +272,17 @@ public class TriggerHandler implements DisposableBean {
     }
 
 
-    private void offerDelayQueue(Trigger trigger, Wal wal, long delayMS) {
+    private void offerDelayQueue(Wal wal, long delayMS) {
         if (delayMS < 100) {
             logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            triggerPool.execute(() -> confirmWalAndCreateTask(trigger, wal));
+            triggerPool.execute(() -> confirmWalAndCreateTask(wal));
         } else {
             logger.info("create asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            triggerPool.schedule(() -> confirmWalAndCreateTask(trigger, wal), delayMS, TimeUnit.MILLISECONDS);
+            triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
         }
     }
 
-    private void confirmWalAndCreateTask(Trigger trigger, Wal wal) {
+    private void confirmWalAndCreateTask(Wal wal) {
         Long walId = wal.getWalId();
         // 同一事务确认(删除)Wal和创建任务
         TransactionUtil.INSTANCE.execute(() -> {
@@ -303,7 +292,7 @@ public class TriggerHandler implements DisposableBean {
                 logger.info("ConfirmWal failed.Maybe It has been confirmed.Wal: {}", walId);
                 return;
             }
-            taskManager.createTask(trigger, wal, host);
+            taskManager.createTask(wal, host);
             logger.info("Task created.Task: {}", walId);
         });
     }

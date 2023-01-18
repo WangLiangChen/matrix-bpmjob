@@ -1,0 +1,30 @@
+POST http://localhost:8080/trigger/create
+Content-Type: application/json
+
+{
+  "triggerGroup": "Planning",
+  "triggerName": "测试触发器",
+  "triggerType": "CRON",
+  "triggerExpression": "5/10 * * * * ?",
+  "executorType": "JAVA_EXECUTOR",
+  "executorSettings": {},
+  "missThreshold": 5,
+  "missStrategy": "COMPENSATE",
+  "assignStrategy": "RANDOM",
+  "shardingStrategy": "AUTO",
+  "shardingNumber": 0,
+  "triggerParams": {
+    "a": 1,
+    "b": 2
+  }
+}
+
+###
+GET http://localhost:8080/trigger/enable?triggerId=458322311976603852
+Accept: application/json
+
+###
+GET http://localhost:8080/trigger/disable?triggerId=458322311976603852
+Accept: application/json
+
+###

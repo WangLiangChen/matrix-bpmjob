@@ -1,14 +1,14 @@
 package wang.liangchen.matrix.bpmjob.domain.task;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
+import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
+import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 
 import java.time.LocalDateTime;
-import java.util.StringJoiner;
 
 /**
  * 触发任务
@@ -21,11 +21,16 @@ public class Task extends RootEntity {
      * PrimaryKey
      */
     @Id
+    @IdStrategy(value = IdStrategy.Strategy.MatrixFlake)
     private Long taskId;
     /**
      * PrimaryKey
      */
     private Long parentId;
+    /**
+     * PrimaryKey
+     */
+    private Long walId;
     /**
      * PrimaryKey
      */
@@ -47,17 +52,16 @@ public class Task extends RootEntity {
      */
     private String taskGroup;
     /**
-     * 触发器参数
+     * 配置在trigger上的参数-静态
      */
-    private String triggerParams;
+    private JsonField triggerParams;
     /**
-     * 任务参数
+     * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
-    private String taskParams;
+    private JsonField taskParams;
     /**
-     * 父级任务/上一任务参数
+     * 分片数;子任务数;0-不分片,不能创建子任务
      */
-    private String parentParams;
     private Byte shardingNumber;
     /**
      * 创建时间
@@ -76,6 +80,10 @@ public class Task extends RootEntity {
      */
     private LocalDateTime completeDatetime;
     /**
+     * 完成信息摘要-正常/异常
+     */
+    private String completeSummary;
+    /**
      * 进度百分比-乘以100之后的值
      */
     private Short progress;
@@ -83,7 +91,6 @@ public class Task extends RootEntity {
      * 状态
      * 状态列
      */
-    @Column(name = "state")
     private Byte state;
 
     public static Task valueOf(Object source) {
@@ -116,6 +123,14 @@ public class Task extends RootEntity {
 
     public void setParentId(Long parentId) {
         this.parentId = parentId;
+    }
+
+    public Long getWalId() {
+        return walId;
+    }
+
+    public void setWalId(Long walId) {
+        this.walId = walId;
     }
 
     public Long getHostId() {
@@ -158,28 +173,20 @@ public class Task extends RootEntity {
         this.taskGroup = taskGroup;
     }
 
-    public String getTriggerParams() {
+    public JsonField getTriggerParams() {
         return triggerParams;
     }
 
-    public void setTriggerParams(String triggerParams) {
+    public void setTriggerParams(JsonField triggerParams) {
         this.triggerParams = triggerParams;
     }
 
-    public String getTaskParams() {
+    public JsonField getTaskParams() {
         return taskParams;
     }
 
-    public void setTaskParams(String taskParams) {
+    public void setTaskParams(JsonField taskParams) {
         this.taskParams = taskParams;
-    }
-
-    public String getParentParams() {
-        return parentParams;
-    }
-
-    public void setParentParams(String parentParams) {
-        this.parentParams = parentParams;
     }
 
     public Byte getShardingNumber() {
@@ -222,6 +229,14 @@ public class Task extends RootEntity {
         this.completeDatetime = completeDatetime;
     }
 
+    public String getCompleteSummary() {
+        return completeSummary;
+    }
+
+    public void setCompleteSummary(String completeSummary) {
+        this.completeSummary = completeSummary;
+    }
+
     public Short getProgress() {
         return progress;
     }
@@ -236,28 +251,5 @@ public class Task extends RootEntity {
 
     public void setState(Byte state) {
         this.state = state;
-    }
-
-    @Override
-    public String toString() {
-        return new StringJoiner(", ", Task.class.getSimpleName() + "[", "]")
-                .add("taskId=" + taskId)
-                .add("parentId=" + parentId)
-                .add("hostId=" + hostId)
-                .add("triggerId=" + triggerId)
-                .add("expectedHost='" + expectedHost + "'")
-                .add("actualHost='" + actualHost + "'")
-                .add("taskGroup='" + taskGroup + "'")
-                .add("triggerParams='" + triggerParams + "'")
-                .add("taskParams='" + taskParams + "'")
-                .add("parentParams='" + parentParams + "'")
-                .add("shardingNumber=" + shardingNumber)
-                .add("createDatetime=" + createDatetime)
-                .add("assignDatetime=" + assignDatetime)
-                .add("ackDatetime=" + ackDatetime)
-                .add("completeDatetime=" + completeDatetime)
-                .add("progress=" + progress)
-                .add("state=" + state)
-                .toString();
     }
 }

@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
+import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
 
 import java.time.LocalDateTime;
@@ -35,6 +36,18 @@ public class Wal extends RootEntity {
      * 分组标识{tenantCode}-{consumerCode}
      */
     private String walGroup;
+    /**
+     * 配置在trigger上的参数-静态
+     */
+    private JsonField triggerParams;
+    /**
+     * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
+     */
+    private JsonField taskParams;
+    /**
+     * 分片数;子任务数;0-不分片,不能创建子任务
+     */
+    private Byte shardingNumber;
     /**
      * 创建时间
      */
@@ -70,7 +83,7 @@ public class Wal extends RootEntity {
     }
 
     public Long getWalId() {
-        return this.walId;
+        return walId;
     }
 
     public void setWalId(Long walId) {
@@ -78,7 +91,7 @@ public class Wal extends RootEntity {
     }
 
     public Long getHostId() {
-        return this.hostId;
+        return hostId;
     }
 
     public void setHostId(Long hostId) {
@@ -86,7 +99,7 @@ public class Wal extends RootEntity {
     }
 
     public Long getTriggerId() {
-        return this.triggerId;
+        return triggerId;
     }
 
     public void setTriggerId(Long triggerId) {
@@ -109,8 +122,32 @@ public class Wal extends RootEntity {
         this.walGroup = walGroup;
     }
 
+    public JsonField getTriggerParams() {
+        return triggerParams;
+    }
+
+    public void setTriggerParams(JsonField triggerParams) {
+        this.triggerParams = triggerParams;
+    }
+
+    public JsonField getTaskParams() {
+        return taskParams;
+    }
+
+    public void setTaskParams(JsonField taskParams) {
+        this.taskParams = taskParams;
+    }
+
+    public Byte getShardingNumber() {
+        return shardingNumber;
+    }
+
+    public void setShardingNumber(Byte shardingNumber) {
+        this.shardingNumber = shardingNumber;
+    }
+
     public LocalDateTime getCreateDatetime() {
-        return this.createDatetime;
+        return createDatetime;
     }
 
     public void setCreateDatetime(LocalDateTime createDatetime) {
@@ -118,7 +155,7 @@ public class Wal extends RootEntity {
     }
 
     public LocalDateTime getScheduleDatetime() {
-        return this.scheduleDatetime;
+        return scheduleDatetime;
     }
 
     public void setScheduleDatetime(LocalDateTime scheduleDatetime) {
@@ -126,7 +163,7 @@ public class Wal extends RootEntity {
     }
 
     public LocalDateTime getTriggerDatetime() {
-        return this.triggerDatetime;
+        return triggerDatetime;
     }
 
     public void setTriggerDatetime(LocalDateTime triggerDatetime) {
@@ -134,27 +171,10 @@ public class Wal extends RootEntity {
     }
 
     public Byte getState() {
-        return this.state;
+        return state;
     }
 
     public void setState(Byte state) {
         this.state = state;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Wal{");
-        builder.append("walId = ").append(walId).append(", ");
-        builder.append("hostId = ").append(hostId).append(", ");
-        builder.append("hostLabel = ").append(hostLabel).append(", ");
-        builder.append("triggerId = ").append(triggerId).append(", ");
-        builder.append("createDatetime = ").append(createDatetime).append(", ");
-        builder.append("scheduleDatetime = ").append(scheduleDatetime).append(", ");
-        builder.append("triggerDatetime = ").append(triggerDatetime).append(", ");
-        builder.append("state = ").append(state).append(", ");
-        builder.deleteCharAt(builder.length() - 1);
-        builder.append("}");
-        return builder.toString();
     }
 }

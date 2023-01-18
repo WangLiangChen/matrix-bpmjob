@@ -1,8 +1,12 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.inject.Inject;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
+import wang.liangchen.matrix.bpmjob.domain.host.Host;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
+import wang.liangchen.matrix.framework.commons.exception.MatrixInfoException;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.DeleteCriteria;
@@ -24,6 +28,64 @@ public class TriggerManager {
     @Inject
     public TriggerManager(StandaloneDao repository) {
         this.repository = repository;
+    }
+
+    public void createTrigger(Trigger trigger) {
+        String triggerExpression = trigger.getTriggerExpression();
+        // validate and resolve cron expression
+        CronExpression cronExpression;
+        try {
+            cronExpression = CronExpression.parse(triggerExpression);
+        } catch (Exception e) {
+            throw new MatrixInfoException("The expression '{}' is invalid.", triggerExpression);
+        }
+        trigger.setState(TriggerState.NORMAL);
+        trigger.initializeFields();
+        // auto id
+        trigger.setTriggerId(null);
+        this.repository.insert(trigger);
+        createTriggerInstant(trigger.getTriggerId(), cronExpression);
+    }
+
+    public boolean enableTrigger(Long triggerId) {
+        Trigger entity = Trigger.newInstance();
+        entity.setState(TriggerState.NORMAL);
+
+        UpdateCriteria<Trigger> updateCriteria = UpdateCriteria.of(entity)
+                ._equals(Trigger::getTriggerId, triggerId)
+                ._equals(Trigger::getState, TriggerState.SUSPENDED);
+        int rows = this.repository.update(updateCriteria);
+        if (1 == rows) {
+            Trigger trigger = this.selectTrigger(triggerId, Trigger::getTriggerExpression);
+            this.createTriggerInstant(triggerId, CronExpression.parse(trigger.getTriggerExpression()));
+        }
+        return true;
+    }
+
+    public boolean disableTrigger(Long triggerId) {
+        Trigger entity = Trigger.newInstance();
+        entity.setState(TriggerState.SUSPENDED);
+
+        UpdateCriteria<Trigger> updateCriteria = UpdateCriteria.of(entity)
+                ._equals(Trigger::getTriggerId, triggerId)
+                ._equals(Trigger::getState, TriggerState.NORMAL);
+        int rows = this.repository.update(updateCriteria);
+        if (1 == rows) {
+            this.deleteTriggerInstant(triggerId);
+        }
+        return true;
+    }
+
+    private int createTriggerInstant(Long triggerId, CronExpression cronExpression) {
+        TriggerTime triggerTime = TriggerTime.newInstance();
+        triggerTime.setTriggerId(triggerId);
+        triggerTime.setTriggerInstant(cronExpression.next(LocalDateTime.now()));
+        return this.repository.insert(triggerTime);
+    }
+
+    private int deleteTriggerInstant(Long triggerId) {
+        DeleteCriteria<TriggerTime> deleteCriteria = DeleteCriteria.of(TriggerTime.class)._equals(TriggerTime::getTriggerId, triggerId);
+        return this.repository.delete(deleteCriteria);
     }
 
     public Trigger selectTrigger(Long triggerId, EntityGetter<Trigger>... resultFields) {
@@ -65,12 +127,23 @@ public class TriggerManager {
                 ._equals(Wal::getWalId, walId));
     }
 
-    public void createWal(Wal wal) {
+    public Wal createWal(Trigger trigger, LocalDateTime triggerInstant, Host host) {
+        Wal wal = Wal.newInstance();
+        wal.setTriggerId(trigger.getTriggerId());
+        wal.setHostId(host.getHostId());
+        wal.setHostLabel(host.getHostLabel());
+        wal.setWalGroup(trigger.getTriggerGroup());
+        wal.setTriggerParams(trigger.getTriggerParams());
+        wal.setShardingNumber(trigger.getShardingNumber());
+
+        wal.setTriggerDatetime(triggerInstant);
+
         LocalDateTime now = LocalDateTime.now();
         wal.setCreateDatetime(now);
         wal.setScheduleDatetime(now);
         wal.setState(WalState.ACQUIRED.getState());
         this.repository.insert(wal);
+        return wal;
     }
 
     public int deleteWal(Long walId) {

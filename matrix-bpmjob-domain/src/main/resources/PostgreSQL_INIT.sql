@@ -1,3 +1,4 @@
+
 /*==============================================================*/
 /* Table: bpmjob_consumer                                       */
 /*==============================================================*/
@@ -136,29 +137,28 @@ create unique index if not exists bpmjob_host_pk on bpmjob_host (
 create table if not exists bpmjob_task
 (
     task_id           int8          not null,
+    parent_id         int8          null,
     host_id           int8          null,
     trigger_id        int8          null,
-    parent_id         int8          null,
+    wal_id            int8          null,
     expected_host     varchar(100)  not null,
     actual_host       varchar(100)  not null,
     task_group        varchar(73)   not null,
     trigger_params    varchar(1000) not null,
     task_params       varchar(1000) not null,
-    parent_params     varchar(1000) not null,
     sharding_number   int2          not null,
     create_datetime   timestamp     not null,
     assign_datetime   timestamp     not null,
     ack_datetime      timestamp     not null,
     complete_datetime timestamp     not null,
+    complete_summary  varchar(1000) not null,
     progress          int2          not null,
-    state             int2          not null
+    state             int2          not null,
+    constraint pk_bpmjob_task primary key (task_id)
 );
 
 comment on table bpmjob_task is
     '触发任务';
-
-comment on column bpmjob_task.task_id is
-    'PrimaryKey';
 
 comment on column bpmjob_task.host_id is
     'PrimaryKey';
@@ -166,7 +166,7 @@ comment on column bpmjob_task.host_id is
 comment on column bpmjob_task.trigger_id is
     'PrimaryKey';
 
-comment on column bpmjob_task.parent_id is
+comment on column bpmjob_task.wal_id is
     'PrimaryKey';
 
 comment on column bpmjob_task.expected_host is
@@ -179,13 +179,10 @@ comment on column bpmjob_task.task_group is
     '分组标识{tenantCode}-{consumerCode}';
 
 comment on column bpmjob_task.trigger_params is
-    '触发器参数';
+    '配置在trigger上的参数-静态';
 
 comment on column bpmjob_task.task_params is
-    '任务参数';
-
-comment on column bpmjob_task.parent_params is
-    '父级任务/上一任务参数';
+    '显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等';
 
 comment on column bpmjob_task.sharding_number is
     '分片序号;子任务序号';
@@ -201,6 +198,9 @@ comment on column bpmjob_task.ack_datetime is
 
 comment on column bpmjob_task.complete_datetime is
     '完成时间';
+
+comment on column bpmjob_task.complete_summary is
+    '完成信息摘要(正常/错误)';
 
 comment on column bpmjob_task.progress is
     '进度百分比-乘以100之后的值';
@@ -234,6 +234,13 @@ create index if not exists trigger_task_fk on bpmjob_task (
 /*==============================================================*/
 create index if not exists host_task_fk on bpmjob_task (
                                                         host_id
+    );
+
+/*==============================================================*/
+/* Index: wal_task_fk                                           */
+/*==============================================================*/
+create index if not exists wal_task_fk on bpmjob_task (
+                                                       wal_id
     );
 
 /*==============================================================*/
@@ -373,7 +380,8 @@ create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (
 create table if not exists bpmjob_trigger_time
 (
     trigger_id      int8         not null,
-    trigger_instant timestamp    not null
+    trigger_instant timestamp    not null,
+    constraint pk_bpmjob_trigger_time primary key (trigger_id)
 );
 
 comment on table bpmjob_trigger_time is
@@ -397,15 +405,19 @@ create unique index if not exists bpmjob_trigger_time_pk on bpmjob_trigger_time 
 /*==============================================================*/
 create table if not exists bpmjob_wal
 (
-    wal_id            int8         not null,
-    host_id           int8         null,
-    trigger_id        int8         null,
-    host_label        varchar(100) not null,
-    wal_group         varchar(73)  not null,
-    create_datetime   timestamp    not null,
-    schedule_datetime timestamp    not null,
-    trigger_datetime  timestamp    not null,
-    state             int2         not null
+    wal_id            int8          not null,
+    host_id           int8          null,
+    trigger_id        int8          null,
+    host_label        varchar(100)  not null,
+    wal_group         varchar(73)   not null,
+    trigger_params    varchar(1000) not null,
+    task_params       varchar(1000) not null,
+    sharding_number   int2          not null,
+    create_datetime   timestamp     not null,
+    schedule_datetime timestamp     not null,
+    trigger_datetime  timestamp     not null,
+    state             int2          not null,
+    constraint pk_bpmjob_wal primary key (wal_id)
 );
 
 comment on table bpmjob_wal is
@@ -426,14 +438,23 @@ comment on column bpmjob_wal.host_label is
 comment on column bpmjob_wal.wal_group is
     '分组标识{tenantCode}-{consumerCode}';
 
+comment on column bpmjob_wal.trigger_params is
+    '配置在trigger上的参数-静态';
+
+comment on column bpmjob_wal.task_params is
+    '显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等';
+
+comment on column bpmjob_wal.sharding_number is
+    '分片数;子任务数;0-不分片,不能创建子任务';
+
 comment on column bpmjob_wal.create_datetime is
     '创建时间';
 
 comment on column bpmjob_wal.schedule_datetime is
-    '实际调度时间';
+    '预期触发时间';
 
 comment on column bpmjob_wal.trigger_datetime is
-    '预期触发时间';
+    '实际触发时间';
 
 comment on column bpmjob_wal.state is
     '1-acquired;2-triggered';

@@ -1,53 +1,42 @@
-package wang.liangchen.matrix.bpmjob.domain.trigger;
+package wang.liangchen.matrix.bpmjob.service;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Version;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.*;
 import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
-import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
-import wang.liangchen.matrix.framework.commons.type.ClassUtil;
-import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
-import wang.liangchen.matrix.framework.data.annotation.ColumnState;
-import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
+import wang.liangchen.matrix.framework.commons.validation.InsertGroup;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
-import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
-
-import java.time.LocalDateTime;
 
 /**
- * 触发器
- *
- * @author Liangchen.Wang 2022-11-08 13:24:45
+ * @author Liangchen.Wang 2023-01-16 14:27
  */
-@Entity(name = "bpmjob_trigger")
-public class Trigger extends RootEntity {
-    /**
-     * PrimaryKey
-     */
-    @Id
-    @IdStrategy(IdStrategy.Strategy.MatrixFlake)
+public class TriggerRequest {
     private Long triggerId;
     /**
      * 分组标识{tenantCode}-{consumerCode}
      */
+    @NotBlank(groups = InsertGroup.class)
     private String triggerGroup;
     /**
      * 名称
      */
+    @NotBlank(groups = InsertGroup.class)
     private String triggerName;
     /**
      * 触发器类型:FIXRATE;CRON;
      */
+    @NotNull(groups = InsertGroup.class)
     private TriggerType triggerType;
     /**
      * 不同的触发器类型对应的表达式FIXRATE:1S 1M 1H 1D
      */
+    @NotBlank(groups = InsertGroup.class)
     private String triggerExpression;
 
     /**
      * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
+    @NotNull(groups = InsertGroup.class)
     private ExecutorType executorType;
     /**
      * 不同的执行器对应的配置
@@ -56,91 +45,41 @@ public class Trigger extends RootEntity {
     /**
      * 错失触发的阈值,单位S
      */
+    @NotNull(groups = InsertGroup.class)
     private Byte missThreshold;
     /**
      * 触发错失处理策略
      */
+    @NotNull(groups = InsertGroup.class)
     private MissStrategy missStrategy;
-
     /**
      * 任务分配策略
      */
+    @NotNull(groups = InsertGroup.class)
     private AssignStrategy assignStrategy;
     /**
      * 任务分片策略AUTO-自动;PROGRAM-编程式;
      */
+    @NotNull(groups = InsertGroup.class)
     private ShardingStrategy shardingStrategy;
     /**
      * 分片数，子任务数；0-不分片，不能创建子任务
      */
+    @NotNull(groups = InsertGroup.class)
     private Byte shardingNumber;
     /**
      * 触发参数
      */
-    @ColumnJson
+    @NotNull(groups = InsertGroup.class)
     private JsonField triggerParams;
-    /**
-     * 扩展配置
-     */
-    @ColumnJson
-    private JsonField extendedSettings;
-    /**
-     * 任务参数(类型、策略、配置等)
-     */
-    @ColumnJson
-    private JsonField taskSettings;
 
-    /**
-     * 版本列
-     * 更新和删除时,非空则启用乐观锁
-     */
-    @Version
-    private Integer version;
-    /**
-     *
-     */
     private String owner;
-    /**
-     *
-     */
+
     private String creator;
-    /**
-     *
-     */
-    private LocalDateTime createDatetime;
-    /**
-     *
-     */
+
     private String modifier;
-    /**
-     *
-     */
-    private LocalDateTime modifyDatetime;
-    /**
-     *
-     */
     private String summary;
-    /**
-     * 状态列
-     */
-    @ColumnState
     private ConstantEnum state;
-
-    public static Trigger valueOf(Object source) {
-        return ObjectUtil.INSTANCE.copyProperties(source, Trigger.class);
-    }
-
-    public static Trigger newInstance() {
-        return ClassUtil.INSTANCE.instantiate(Trigger.class);
-    }
-
-    public static Trigger newInstance(boolean initializeFields) {
-        Trigger entity = ClassUtil.INSTANCE.instantiate(Trigger.class);
-        if (initializeFields) {
-            entity.initializeFields();
-        }
-        return entity;
-    }
 
     public Long getTriggerId() {
         return triggerId;
@@ -246,30 +185,6 @@ public class Trigger extends RootEntity {
         this.triggerParams = triggerParams;
     }
 
-    public JsonField getExtendedSettings() {
-        return extendedSettings;
-    }
-
-    public void setExtendedSettings(JsonField extendedSettings) {
-        this.extendedSettings = extendedSettings;
-    }
-
-    public JsonField getTaskSettings() {
-        return taskSettings;
-    }
-
-    public void setTaskSettings(JsonField taskSettings) {
-        this.taskSettings = taskSettings;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
     public String getOwner() {
         return owner;
     }
@@ -286,28 +201,12 @@ public class Trigger extends RootEntity {
         this.creator = creator;
     }
 
-    public LocalDateTime getCreateDatetime() {
-        return createDatetime;
-    }
-
-    public void setCreateDatetime(LocalDateTime createDatetime) {
-        this.createDatetime = createDatetime;
-    }
-
     public String getModifier() {
         return modifier;
     }
 
     public void setModifier(String modifier) {
         this.modifier = modifier;
-    }
-
-    public LocalDateTime getModifyDatetime() {
-        return modifyDatetime;
-    }
-
-    public void setModifyDatetime(LocalDateTime modifyDatetime) {
-        this.modifyDatetime = modifyDatetime;
     }
 
     public String getSummary() {

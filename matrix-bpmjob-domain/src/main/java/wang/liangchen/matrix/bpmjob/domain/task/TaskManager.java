@@ -3,13 +3,13 @@ package wang.liangchen.matrix.bpmjob.domain.task;
 import jakarta.inject.Inject;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.host.Host;
-import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -25,28 +25,34 @@ public class TaskManager {
         this.repository = repository;
     }
 
-    public int createTask(Trigger trigger, Wal wal, Host host) {
-        Task task = Task.newInstance();
-        task.setTaskId(wal.getWalId());
-        task.setParentId(0L);
-        task.setHostId(host.getHostId());
-        task.setTriggerId(trigger.getTriggerId());
-        task.setExpectedHost(wal.getHostLabel());
-        task.setActualHost(host.getHostLabel());
-        task.setTaskGroup(wal.getWalGroup());
-        task.setTriggerParams(trigger.getTriggerParams());
-        task.setTaskParams("");
-        task.setParentParams("");
-        task.setShardingNumber((byte) 0);
+    public int createTask(Wal wal, Host host) {
+        Byte shardingNumber = wal.getShardingNumber();
+        shardingNumber = shardingNumber == 0 ? 1 : shardingNumber;
+        List<Task> tasks = new ArrayList<>();
+        for (byte i = 0; i < shardingNumber; i++) {
+            Task task = Task.newInstance();
+            task.setParentId(0L);
+            task.setWalId(wal.getWalId());
+            task.setHostId(host.getHostId());
+            task.setTriggerId(wal.getTriggerId());
+            task.setExpectedHost(wal.getHostLabel());
+            task.setActualHost(host.getHostLabel());
+            task.setTaskGroup(wal.getWalGroup());
+            task.setTriggerParams(wal.getTriggerParams());
+            task.setTaskParams(wal.getTaskParams());
 
-        LocalDateTime now = LocalDateTime.now();
-        task.setCreateDatetime(now);
-        task.setAssignDatetime(now);
-        task.setAckDatetime(now);
-        task.setCompleteDatetime(now);
-        task.setProgress((short) 0);
-        task.setState(TaskState.UNASSIGNED.getState());
-        return repository.insert(task);
+            task.setShardingNumber(i);
+
+            LocalDateTime now = LocalDateTime.now();
+            task.setCreateDatetime(now);
+            task.setAssignDatetime(now);
+            task.setAckDatetime(now);
+            task.setCompleteDatetime(now);
+            task.setProgress((short) 0);
+            task.setState(TaskState.UNASSIGNED.getState());
+            tasks.add(task);
+        }
+        return repository.insert(tasks);
     }
 
     public int delete(Long taskId) {
