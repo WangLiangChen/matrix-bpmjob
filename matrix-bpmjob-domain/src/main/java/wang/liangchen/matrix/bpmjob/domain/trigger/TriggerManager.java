@@ -12,6 +12,7 @@ import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.DeleteCriteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.EntityGetter;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
+import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,8 +42,6 @@ public class TriggerManager {
         }
         trigger.setState(TriggerState.NORMAL);
         trigger.initializeFields();
-        // auto id
-        trigger.setTriggerId(null);
         this.repository.insert(trigger);
         createTriggerInstant(trigger.getTriggerId(), cronExpression);
     }
@@ -115,7 +114,7 @@ public class TriggerManager {
     public List<Long> eligibleWalIds(LocalDateTime duration, int batchSize) {
         Criteria<Wal> criteria = Criteria.of(Wal.class)
                 .resultFields(Wal::getWalId)
-                ._lessThan(Wal::getScheduleDatetime, duration)
+                ._lessThan(Wal::getTriggerDatetime, duration)
                 .pageSize(batchSize).pageNumber(1);
         List<Wal> wals = this.repository.list(criteria);
         return wals.stream().map(Wal::getWalId).collect(Collectors.toList());
@@ -127,7 +126,7 @@ public class TriggerManager {
                 ._equals(Wal::getWalId, walId));
     }
 
-    public Wal createWal(Trigger trigger, LocalDateTime triggerInstant, Host host) {
+    public Wal createWal(Trigger trigger, LocalDateTime triggerInstant, JsonField taskParams, Host host) {
         Wal wal = Wal.newInstance();
         wal.setTriggerId(trigger.getTriggerId());
         wal.setHostId(host.getHostId());
@@ -136,6 +135,7 @@ public class TriggerManager {
         wal.setTriggerParams(trigger.getTriggerParams());
         wal.setShardingNumber(trigger.getShardingNumber());
 
+        wal.setTaskParams(taskParams);
         wal.setTriggerDatetime(triggerInstant);
 
         LocalDateTime now = LocalDateTime.now();

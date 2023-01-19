@@ -40,11 +40,11 @@ public class Task extends RootEntity {
      */
     private Long triggerId;
     /**
-     * 预期分配到的hostLabel
+     * 预期分配到任务的executor
      */
     private String expectedHost;
     /**
-     * 实际分配到的hostLabel
+     * 实际分配到任务的executor
      */
     private String actualHost;
     /**

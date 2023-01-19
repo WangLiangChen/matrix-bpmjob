@@ -22,6 +22,7 @@
         <module>matrix-bpmjob-trigger</module>
         <module>matrix-bpmjob-console</module>
         <module>matrix-bpmjob-domain</module>
+        <module>matrix-bpmjob-task</module>
     </modules>
 
     <properties>

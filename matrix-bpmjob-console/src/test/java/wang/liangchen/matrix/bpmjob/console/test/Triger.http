@@ -3,9 +3,9 @@ Content-Type: application/json
 
 {
   "triggerGroup": "Planning",
-  "triggerName": "测试触发器",
+  "triggerName": "测试触发器5S",
   "triggerType": "CRON",
-  "triggerExpression": "5/10 * * * * ?",
+  "triggerExpression": "2/5 * * * * ?",
   "executorType": "JAVA_EXECUTOR",
   "executorSettings": {},
   "missThreshold": 5,
@@ -14,8 +14,8 @@ Content-Type: application/json
   "shardingStrategy": "AUTO",
   "shardingNumber": 0,
   "triggerParams": {
-    "a": 1,
-    "b": 2
+    "three": 3,
+    "four": 4
   }
 }
 

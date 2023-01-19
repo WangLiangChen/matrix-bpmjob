@@ -18,6 +18,7 @@ import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.datetime.DateTimeUtil;
 import wang.liangchen.matrix.framework.commons.thread.ThreadUtil;
+import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.util.TransactionUtil;
 
 import java.time.Duration;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +48,9 @@ public class TriggerHandler implements DisposableBean {
     private final Short batchSize = 100;
     private final TriggerThread triggerThread = new TriggerThread();
     private final WalThread walThread = new WalThread();
-    private final ScheduledExecutorService triggerPool = Executors.newScheduledThreadPool(32, new CustomizableThreadFactory("job-scheduler-"));
+    private final ScheduledExecutorService triggerPool = Executors.newScheduledThreadPool(64, new CustomizableThreadFactory("job-scheduler-"));
+    private volatile boolean halted = false;
+    private final CountDownLatch countDownLatch = new CountDownLatch(2);
 
     @Inject
     public TriggerHandler(TriggerManager triggerManager, TaskManager taskManager, HostHandler hostHandler) {
@@ -62,23 +66,18 @@ public class TriggerHandler implements DisposableBean {
 
     @Override
     public void destroy() throws Exception {
-        // halt Thread
-        this.walThread.halt();
-        this.triggerThread.halt();
+        // halt all threads
+        this.halted = true;
+        logger.info("Waiting for task creation to complete ...");
+        this.countDownLatch.await();
         logger.info("Waiting for thread pool shutdown ...");
         this.triggerPool.shutdown();
         this.triggerPool.awaitTermination(1, TimeUnit.MINUTES);
     }
 
     private class TriggerThread extends Thread {
-        private boolean halted = false;
-
         TriggerThread() {
             super("job-monitor");
-        }
-
-        void halt() {
-            this.halted = true;
         }
 
         @Override
@@ -86,7 +85,8 @@ public class TriggerHandler implements DisposableBean {
             long sleep = 0;
             while (true) {
                 /*--------------------------halted and break-------------------------------*/
-                if (this.halted) {
+                if (halted) {
+                    countDownLatch.countDown();
                     logger.info("The WalThread is halted. Shutdown...");
                     break;
                 }
@@ -122,14 +122,8 @@ public class TriggerHandler implements DisposableBean {
     }
 
     private class WalThread extends Thread {
-        private boolean halted = false;
-
         WalThread() {
             super("wal-monitor");
-        }
-
-        void halt() {
-            this.halted = true;
         }
 
         @Override
@@ -137,7 +131,8 @@ public class TriggerHandler implements DisposableBean {
             long sleep = 0;
             while (true) {
                 /*--------------------------halted and break-------------------------------*/
-                if (this.halted) {
+                if (halted) {
+                    countDownLatch.countDown();
                     logger.info("The WalThread is halted. Shutdown...");
                     break;
                 }
@@ -177,6 +172,7 @@ public class TriggerHandler implements DisposableBean {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
         // 未来15S之前应该触发的所有触发器
         LocalDateTime duration = now.plusSeconds(triggersAcquireInterval);
+        // future: triggerInstant < now+triggersAcquireInterval
         List<TriggerTime> triggerTimes = triggerManager.eligibleTriggerTimes(duration, batchSize);
         // 乱序
         Collections.shuffle(triggerTimes);
@@ -185,7 +181,10 @@ public class TriggerHandler implements DisposableBean {
 
     private void exclusiveTrigger(TriggerTime triggerTime) {
         Long triggerId = triggerTime.getTriggerId();
-        Trigger trigger = triggerManager.selectTrigger(triggerId, Trigger::getTriggerId, Trigger::getTriggerExpression, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getTriggerParams, Trigger::getState);
+        Trigger trigger = triggerManager.selectTrigger(triggerId,
+                Trigger::getTriggerId, Trigger::getTriggerGroup, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerExpression,
+                Trigger::getExecutorType, Trigger::getExecutorSettings, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getAssignStrategy,
+                Trigger::getShardingStrategy, Trigger::getShardingNumber, Trigger::getTriggerParams, Trigger::getExtendedSettings, Trigger::getTaskSettings, Trigger::getState);
         if (null == trigger) {
             return;
         }
@@ -208,7 +207,7 @@ public class TriggerHandler implements DisposableBean {
             boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
             if (renew) {
                 logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-                Wal innerWal = triggerManager.createWal(trigger, triggerInstant, this.host);
+                Wal innerWal = triggerManager.createWal(trigger, triggerInstant, JsonField.newInstance(), this.host);
                 logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
                 return innerWal;
             }
@@ -237,8 +236,8 @@ public class TriggerHandler implements DisposableBean {
 
     private List<Long> acquireEligibleWals() {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        // 当前时间之前1S的Wal
-        LocalDateTime duration = now.minusSeconds(1);
+        // past: triggerInstant < now - 2s
+        LocalDateTime duration = now.minusSeconds(2);
         List<Long> walIds = triggerManager.eligibleWalIds(duration, batchSize);
         // 乱序
         Collections.shuffle(walIds);
@@ -251,7 +250,7 @@ public class TriggerHandler implements DisposableBean {
             logger.info("Wal '{}' doesn't exist,Maybe It has been confirmed.skipped by Host:{}", walId, hostLabel);
             return;
         }
-        logger.info("Wal '{}' is desired by Host:{}", walId, hostLabel);
+        logger.info("Wal '{}' is desired by Host:{} and offer to queue", walId, hostLabel);
         offerDelayQueue(wal, 0L);
     }
 
@@ -264,7 +263,7 @@ public class TriggerHandler implements DisposableBean {
                 offerDelayQueue(wal, 0L);
                 break;
             case SKIP:
-                logger.warn("Skip missed trigger: {}", trigger.getTriggerId());
+                logger.info("Skip missed Wal:{}, Trigger:{}", wal.getWalId(), trigger.getTriggerId());
                 break;
             default:
                 break;
@@ -274,10 +273,10 @@ public class TriggerHandler implements DisposableBean {
 
     private void offerDelayQueue(Wal wal, long delayMS) {
         if (delayMS < 100) {
-            logger.info("create immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+            logger.info("immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
             triggerPool.execute(() -> confirmWalAndCreateTask(wal));
         } else {
-            logger.info("create asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+            logger.info("asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
             triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
         }
     }
@@ -289,7 +288,7 @@ public class TriggerHandler implements DisposableBean {
             int rows = confirmWal(wal);
             // redo 时,其它线程已经创建任务
             if (0 == rows) {
-                logger.info("ConfirmWal failed.Maybe It has been confirmed.Wal: {}", walId);
+                logger.info("Confirm Wal failed.Maybe It has been confirmed.Wal: {}", walId);
                 return;
             }
             taskManager.createTask(wal, host);

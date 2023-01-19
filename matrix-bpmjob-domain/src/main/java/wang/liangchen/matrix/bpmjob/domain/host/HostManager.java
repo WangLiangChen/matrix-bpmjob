@@ -9,9 +9,12 @@ import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
 import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.stream.Collectors;
 
 
 /**
@@ -29,38 +32,46 @@ public class HostManager {
         this.repository = repository;
     }
 
-    public int add(Host entity) {
-        return repository.insert(entity);
+    public void createHost(Host host) {
+        host.setState(HostState.ONLINE.getState());
+        host.initializeFields();
+        this.repository.insert(host);
     }
 
-    public int delete(Long registryId) {
-        Host entity = Host.newInstance();
-        entity.setHostId(registryId);
-        return repository.delete(entity);
+    public void heartbeat(Long hostId, Short heartbeatInterval) {
+        Host host = Host.newInstance();
+        host.setHostId(hostId);
+        host.setHeartbeatInterval(heartbeatInterval);
+        host.setHeartbeatDatetime(LocalDateTime.now());
+        host.setState(HostState.ONLINE.getState());
+        this.repository.update(host);
     }
 
-    public int update(Host entity) {
-        return repository.update(entity);
+    public Set<Long> acquireOfflinedHost(LocalDateTime duration) {
+        List<Host> hosts = this.repository.list(Criteria.of(Host.class)
+                .resultFields(Host::getHostId)
+                ._equals(Host::getState, HostState.ONLINE.getState())
+                ._lessThan(Host::getHeartbeatDatetime, duration));
+        return hosts.stream().map(Host::getHostId).collect(Collectors.toSet());
     }
 
-    public Host byKey(Long registryId, String... resultColumns) {
-        return repository.select(Criteria.of(Host.class)
-                .resultColumns(resultColumns)
-                ._equals(Host::getHostId, registryId)
+    public int terminateHost(Long hostId,Long terminator) {
+        // 终结超时没有心跳的节点，使用状态迁移：online->dead 抢占
+        Host host = Host.newInstance();
+        host.setTerminator(terminator);
+        host.setDeadDatetime(LocalDateTime.now());
+        host.setState(HostState.DEAD.getState());
+        return repository.update(UpdateCriteria.of(host)
+                ._equals(Host::getHostId, hostId)
+                ._equals(Host::getState, HostState.ONLINE.getState())
         );
     }
 
-    public int stateTransition(Long registryId, Byte to, Byte... from) {
+    public void offline(Long hostId) {
         Host entity = Host.newInstance();
-        entity.setState(to);
-        UpdateCriteria<Host> updateCriteria = UpdateCriteria.of(entity)
-                ._equals(Host::getHostId, registryId)
-                ._in(Host::getState, from);
-        return repository.update(updateCriteria);
+        entity.setHostId(hostId);
+        entity.setState(HostState.OFFLINE.getState());
+        entity.setOfflineDatetime(LocalDateTime.now());
+        repository.update(entity);
     }
-
-    public List<Host> byStates(Byte... states) {
-        return repository.list(Criteria.of(Host.class)._in(Host::getState, states));
-    }
-
 }
