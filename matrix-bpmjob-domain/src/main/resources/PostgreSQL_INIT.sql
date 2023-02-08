@@ -149,7 +149,7 @@ create table if not exists bpmjob_task
     sharding_number   int2          not null,
     create_datetime   timestamp     not null,
     assign_datetime   timestamp     not null,
-    ack_datetime      timestamp     not null,
+    accept_datetime      timestamp     not null,
     complete_datetime timestamp     not null,
     complete_summary  varchar(1000) not null,
     progress          int2          not null,
@@ -193,7 +193,7 @@ comment on column bpmjob_task.create_datetime is
 comment on column bpmjob_task.assign_datetime is
     '分配时间';
 
-comment on column bpmjob_task.ack_datetime is
+comment on column bpmjob_task.accept_datetime is
     '分配后,消费端确认时间';
 
 comment on column bpmjob_task.complete_datetime is

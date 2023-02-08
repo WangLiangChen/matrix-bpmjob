@@ -7,7 +7,14 @@ public class TaskReport {
     private Long taskId;
     private String taskGroup;
     private String hostLabel;
+    /**
+     * 要获取的任务数量
+     */
     private Byte number;
+    /**
+     * 上报的进度值
+     */
+    private Byte process;
     private Boolean aborted;
     private String completeSummary;
 
@@ -41,6 +48,14 @@ public class TaskReport {
 
     public void setNumber(Byte number) {
         this.number = number;
+    }
+
+    public Byte getProcess() {
+        return process;
+    }
+
+    public void setProcess(Byte process) {
+        this.process = process;
     }
 
     public Boolean getAborted() {

@@ -291,7 +291,7 @@ public class TriggerHandler implements DisposableBean {
                 logger.info("Confirm Wal failed.Maybe It has been confirmed.Wal: {}", walId);
                 return;
             }
-            taskManager.createTask(wal, host);
+            taskManager.create(wal, host);
             logger.info("Task created.Task: {}", walId);
         });
     }

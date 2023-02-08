@@ -6,7 +6,14 @@ import wang.liangchen.matrix.framework.commons.exception.MatrixWarnException;
  * @author Liangchen.Wang 2022-10-22 10:38
  */
 public enum TaskState {
-    UNASSIGNED("未分配"), ASSIGNED("已分配"), ACKED("确认"), EXECUTING("执行中"), COMPLETED("已完成"), ABORTED("完成(异常)");
+    UNASSIGNED("未分配"),
+
+    ASSIGNED("已分配"),
+    ACCEPTED("已接收"),
+
+    EXECUTING("执行中"),
+    COMPLETED("完成(正常)"),
+    ABORTED("完成(异常)");
 
     private final String summary;
 

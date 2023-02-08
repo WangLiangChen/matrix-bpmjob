@@ -23,6 +23,7 @@
         <module>matrix-bpmjob-console</module>
         <module>matrix-bpmjob-domain</module>
         <module>matrix-bpmjob-task</module>
+        <module>matrix-bpmjob-sdk</module>
     </modules>
 
     <properties>

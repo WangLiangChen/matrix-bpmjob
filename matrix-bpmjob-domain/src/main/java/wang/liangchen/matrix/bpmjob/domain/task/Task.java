@@ -74,7 +74,7 @@ public class Task extends RootEntity {
     /**
      * 分配后,消费端确认时间
      */
-    private LocalDateTime ackDatetime;
+    private LocalDateTime acceptDatetime;
     /**
      * 完成时间
      */
@@ -86,7 +86,7 @@ public class Task extends RootEntity {
     /**
      * 进度百分比-乘以100之后的值
      */
-    private Short progress;
+    private Byte progress;
     /**
      * 状态
      * 状态列
@@ -213,12 +213,12 @@ public class Task extends RootEntity {
         this.assignDatetime = assignDatetime;
     }
 
-    public LocalDateTime getAckDatetime() {
-        return ackDatetime;
+    public LocalDateTime getAcceptDatetime() {
+        return acceptDatetime;
     }
 
-    public void setAckDatetime(LocalDateTime ackDatetime) {
-        this.ackDatetime = ackDatetime;
+    public void setAcceptDatetime(LocalDateTime acceptDatetime) {
+        this.acceptDatetime = acceptDatetime;
     }
 
     public LocalDateTime getCompleteDatetime() {
@@ -237,11 +237,11 @@ public class Task extends RootEntity {
         this.completeSummary = completeSummary;
     }
 
-    public Short getProgress() {
+    public Byte getProgress() {
         return progress;
     }
 
-    public void setProgress(Short progress) {
+    public void setProgress(Byte progress) {
         this.progress = progress;
     }
 
