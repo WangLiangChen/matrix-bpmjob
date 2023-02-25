@@ -7,7 +7,6 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
-import wang.liangchen.matrix.bpmjob.domain.host.Host;
 import wang.liangchen.matrix.bpmjob.domain.task.TaskManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerManager;
@@ -17,6 +16,7 @@ import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.datetime.DateTimeUtil;
+import wang.liangchen.matrix.framework.commons.network.NetUtil;
 import wang.liangchen.matrix.framework.commons.thread.ThreadUtil;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.util.TransactionUtil;
@@ -38,8 +38,6 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class TriggerHandler implements DisposableBean {
     private final static Logger logger = LoggerFactory.getLogger(TriggerHandler.class);
-    private final Host host;
-    private final Long hostId;
     private final String hostLabel;
     private final TriggerManager triggerManager;
     private final TaskManager taskManager;
@@ -53,12 +51,10 @@ public class TriggerHandler implements DisposableBean {
     private final CountDownLatch countDownLatch = new CountDownLatch(2);
 
     @Inject
-    public TriggerHandler(TriggerManager triggerManager, TaskManager taskManager, HostHandler hostHandler) {
+    public TriggerHandler(TriggerManager triggerManager, TaskManager taskManager) {
         this.triggerManager = triggerManager;
         this.taskManager = taskManager;
-        this.host = hostHandler.getHost();
-        this.hostId = host.getHostId();
-        this.hostLabel = host.getHostLabel();
+        this.hostLabel = NetUtil.INSTANCE.getLocalHostName();
         // start thread
         this.triggerThread.start();
         this.walThread.start();
@@ -182,8 +178,8 @@ public class TriggerHandler implements DisposableBean {
     private void exclusiveTrigger(TriggerTime triggerTime) {
         Long triggerId = triggerTime.getTriggerId();
         Trigger trigger = triggerManager.selectTrigger(triggerId,
-                Trigger::getTriggerId, Trigger::getTriggerGroup, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerExpression,
-                Trigger::getExecutorType, Trigger::getExecutorSettings, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getAssignStrategy,
+                Trigger::getTriggerId, Trigger::getTriggerGroup, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerCron,
+                Trigger::getExecutorType, Trigger::getExecutorOption, Trigger::getMissThreshold, Trigger::getMissStrategy, Trigger::getAssignStrategy,
                 Trigger::getShardingStrategy, Trigger::getShardingNumber, Trigger::getTriggerParams, Trigger::getExtendedSettings, Trigger::getTaskSettings, Trigger::getState);
         if (null == trigger) {
             return;
@@ -200,14 +196,14 @@ public class TriggerHandler implements DisposableBean {
         long missThresholdMS = trigger.getMissThreshold() * 1000;
         // parse the next trigger instant, if missed,benchmark is now
         LocalDateTime parseBenchmark = delayMS <= -missThresholdMS ? now : triggerInstant;
-        LocalDateTime nextTriggerInstant = CronExpression.parse(trigger.getTriggerExpression()).next(parseBenchmark);
+        LocalDateTime nextTriggerInstant = CronExpression.parse(trigger.getTriggerCron()).next(parseBenchmark);
 
         // 在同一事务中,通过update抢占操作权和创建预写日志
         Wal wal = TransactionUtil.INSTANCE.execute(() -> {
             boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
             if (renew) {
                 logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-                Wal innerWal = triggerManager.createWal(trigger, triggerInstant, JsonField.newInstance(), this.host);
+                Wal innerWal = triggerManager.createWal(this.hostLabel, trigger, triggerInstant, JsonField.newInstance());
                 logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
                 return innerWal;
             }
@@ -291,7 +287,7 @@ public class TriggerHandler implements DisposableBean {
                 logger.info("Confirm Wal failed.Maybe It has been confirmed.Wal: {}", walId);
                 return;
             }
-            taskManager.create(wal, host);
+            taskManager.create(this.hostLabel, wal);
             logger.info("Task created.Task: {}", walId);
         });
     }

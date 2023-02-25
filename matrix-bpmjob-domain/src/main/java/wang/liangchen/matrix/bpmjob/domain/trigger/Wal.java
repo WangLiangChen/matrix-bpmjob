@@ -2,8 +2,10 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
+import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
@@ -26,10 +28,6 @@ public class Wal extends RootEntity {
     /**
      * PrimaryKey
      */
-    private Long hostId;
-    /**
-     * PrimaryKey
-     */
     private Long triggerId;
     private String hostLabel;
     /**
@@ -37,17 +35,26 @@ public class Wal extends RootEntity {
      */
     private String walGroup;
     /**
-     * 配置在trigger上的参数-静态
+     * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
+    private ExecutorType executorType;
+    /**
+     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
+     */
+    private String executorOption;
+    /**
+     * 触发参数
+     */
+    @ColumnJson
     private JsonField triggerParams;
+    /**
+     * 分片数，子任务数；0-不分片，不能创建子任务
+     */
+    private Byte shardingNumber;
     /**
      * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
     private JsonField taskParams;
-    /**
-     * 分片数;子任务数;0-不分片,不能创建子任务
-     */
-    private Byte shardingNumber;
     /**
      * 创建时间
      */
@@ -90,14 +97,6 @@ public class Wal extends RootEntity {
         this.walId = walId;
     }
 
-    public Long getHostId() {
-        return hostId;
-    }
-
-    public void setHostId(Long hostId) {
-        this.hostId = hostId;
-    }
-
     public Long getTriggerId() {
         return triggerId;
     }
@@ -122,6 +121,22 @@ public class Wal extends RootEntity {
         this.walGroup = walGroup;
     }
 
+    public ExecutorType getExecutorType() {
+        return executorType;
+    }
+
+    public void setExecutorType(ExecutorType executorType) {
+        this.executorType = executorType;
+    }
+
+    public String getExecutorOption() {
+        return executorOption;
+    }
+
+    public void setExecutorOption(String executorOption) {
+        this.executorOption = executorOption;
+    }
+
     public JsonField getTriggerParams() {
         return triggerParams;
     }
@@ -130,20 +145,20 @@ public class Wal extends RootEntity {
         this.triggerParams = triggerParams;
     }
 
-    public JsonField getTaskParams() {
-        return taskParams;
-    }
-
-    public void setTaskParams(JsonField taskParams) {
-        this.taskParams = taskParams;
-    }
-
     public Byte getShardingNumber() {
         return shardingNumber;
     }
 
     public void setShardingNumber(Byte shardingNumber) {
         this.shardingNumber = shardingNumber;
+    }
+
+    public JsonField getTaskParams() {
+        return taskParams;
+    }
+
+    public void setTaskParams(JsonField taskParams) {
+        this.taskParams = taskParams;
     }
 
     public LocalDateTime getCreateDatetime() {

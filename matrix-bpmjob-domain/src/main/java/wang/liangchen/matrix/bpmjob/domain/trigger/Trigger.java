@@ -41,18 +41,27 @@ public class Trigger extends RootEntity {
      */
     private TriggerType triggerType;
     /**
-     * 不同的触发器类型对应的表达式FIXRATE:1S 1M 1H 1D
+     * 不同的触发器类型对应的表达式
      */
-    private String triggerExpression;
+    private String triggerCron;
 
     /**
      * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
     private ExecutorType executorType;
     /**
-     * 不同的执行器对应的配置
+     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
      */
-    private JsonField executorSettings;
+    private String executorOption;
+    /**
+     * 触发参数
+     */
+    @ColumnJson
+    private JsonField triggerParams;
+    /**
+     * 分片数，子任务数；0-不分片，不能创建子任务
+     */
+    private Byte shardingNumber;
     /**
      * 错失触发的阈值,单位S
      */
@@ -70,15 +79,8 @@ public class Trigger extends RootEntity {
      * 任务分片策略AUTO-自动;PROGRAM-编程式;
      */
     private ShardingStrategy shardingStrategy;
-    /**
-     * 分片数，子任务数；0-不分片，不能创建子任务
-     */
-    private Byte shardingNumber;
-    /**
-     * 触发参数
-     */
-    @ColumnJson
-    private JsonField triggerParams;
+
+
     /**
      * 扩展配置
      */
@@ -174,12 +176,12 @@ public class Trigger extends RootEntity {
         this.triggerType = triggerType;
     }
 
-    public String getTriggerExpression() {
-        return triggerExpression;
+    public String getTriggerCron() {
+        return triggerCron;
     }
 
-    public void setTriggerExpression(String triggerExpression) {
-        this.triggerExpression = triggerExpression;
+    public void setTriggerCron(String triggerCron) {
+        this.triggerCron = triggerCron;
     }
 
     public ExecutorType getExecutorType() {
@@ -190,12 +192,28 @@ public class Trigger extends RootEntity {
         this.executorType = executorType;
     }
 
-    public JsonField getExecutorSettings() {
-        return executorSettings;
+    public String getExecutorOption() {
+        return executorOption;
     }
 
-    public void setExecutorSettings(JsonField executorSettings) {
-        this.executorSettings = executorSettings;
+    public void setExecutorOption(String executorOption) {
+        this.executorOption = executorOption;
+    }
+
+    public JsonField getTriggerParams() {
+        return triggerParams;
+    }
+
+    public void setTriggerParams(JsonField triggerParams) {
+        this.triggerParams = triggerParams;
+    }
+
+    public Byte getShardingNumber() {
+        return shardingNumber;
+    }
+
+    public void setShardingNumber(Byte shardingNumber) {
+        this.shardingNumber = shardingNumber;
     }
 
     public Byte getMissThreshold() {
@@ -228,22 +246,6 @@ public class Trigger extends RootEntity {
 
     public void setShardingStrategy(ShardingStrategy shardingStrategy) {
         this.shardingStrategy = shardingStrategy;
-    }
-
-    public Byte getShardingNumber() {
-        return shardingNumber;
-    }
-
-    public void setShardingNumber(Byte shardingNumber) {
-        this.shardingNumber = shardingNumber;
-    }
-
-    public JsonField getTriggerParams() {
-        return triggerParams;
-    }
-
-    public void setTriggerParams(JsonField triggerParams) {
-        this.triggerParams = triggerParams;
     }
 
     public JsonField getExtendedSettings() {

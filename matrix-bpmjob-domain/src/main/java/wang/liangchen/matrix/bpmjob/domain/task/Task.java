@@ -2,6 +2,7 @@ package wang.liangchen.matrix.bpmjob.domain.task;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
@@ -34,10 +35,6 @@ public class Task extends RootEntity {
     /**
      * PrimaryKey
      */
-    private Long hostId;
-    /**
-     * PrimaryKey
-     */
     private Long triggerId;
     /**
      * 预期分配到任务的executor
@@ -51,6 +48,14 @@ public class Task extends RootEntity {
      * 分组标识{tenantCode}-{consumerCode}
      */
     private String taskGroup;
+    /**
+     * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
+     */
+    private ExecutorType executorType;
+    /**
+     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
+     */
+    private String executorOption;
     /**
      * 配置在trigger上的参数-静态
      */
@@ -133,14 +138,6 @@ public class Task extends RootEntity {
         this.walId = walId;
     }
 
-    public Long getHostId() {
-        return hostId;
-    }
-
-    public void setHostId(Long hostId) {
-        this.hostId = hostId;
-    }
-
     public Long getTriggerId() {
         return triggerId;
     }
@@ -171,6 +168,22 @@ public class Task extends RootEntity {
 
     public void setTaskGroup(String taskGroup) {
         this.taskGroup = taskGroup;
+    }
+
+    public ExecutorType getExecutorType() {
+        return executorType;
+    }
+
+    public void setExecutorType(ExecutorType executorType) {
+        this.executorType = executorType;
+    }
+
+    public String getExecutorOption() {
+        return executorOption;
+    }
+
+    public void setExecutorOption(String executorOption) {
+        this.executorOption = executorOption;
     }
 
     public JsonField getTriggerParams() {

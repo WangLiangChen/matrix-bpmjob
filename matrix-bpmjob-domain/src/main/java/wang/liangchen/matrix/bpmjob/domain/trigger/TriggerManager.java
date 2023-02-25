@@ -3,7 +3,6 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 import jakarta.inject.Inject;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
-import wang.liangchen.matrix.bpmjob.domain.host.Host;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
 import wang.liangchen.matrix.framework.commons.exception.MatrixInfoException;
@@ -32,7 +31,7 @@ public class TriggerManager {
     }
 
     public void createTrigger(Trigger trigger) {
-        String triggerExpression = trigger.getTriggerExpression();
+        String triggerExpression = trigger.getTriggerCron();
         // validate and resolve cron expression
         CronExpression cronExpression;
         try {
@@ -55,8 +54,8 @@ public class TriggerManager {
                 ._equals(Trigger::getState, TriggerState.SUSPENDED);
         int rows = this.repository.update(updateCriteria);
         if (1 == rows) {
-            Trigger trigger = this.selectTrigger(triggerId, Trigger::getTriggerExpression);
-            this.createTriggerInstant(triggerId, CronExpression.parse(trigger.getTriggerExpression()));
+            Trigger trigger = this.selectTrigger(triggerId, Trigger::getTriggerCron);
+            this.createTriggerInstant(triggerId, CronExpression.parse(trigger.getTriggerCron()));
         }
         return true;
     }
@@ -126,12 +125,13 @@ public class TriggerManager {
                 ._equals(Wal::getWalId, walId));
     }
 
-    public Wal createWal(Trigger trigger, LocalDateTime triggerInstant, JsonField taskParams, Host host) {
+    public Wal createWal(String hostLabel, Trigger trigger, LocalDateTime triggerInstant, JsonField taskParams) {
         Wal wal = Wal.newInstance();
         wal.setTriggerId(trigger.getTriggerId());
-        wal.setHostId(host.getHostId());
-        wal.setHostLabel(host.getHostLabel());
+        wal.setHostLabel(hostLabel);
         wal.setWalGroup(trigger.getTriggerGroup());
+        wal.setExecutorType(trigger.getExecutorType());
+        wal.setExecutorOption(trigger.getExecutorOption());
         wal.setTriggerParams(trigger.getTriggerParams());
         wal.setShardingNumber(trigger.getShardingNumber());
 

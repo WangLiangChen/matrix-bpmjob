@@ -4,7 +4,6 @@ import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import wang.liangchen.matrix.bpmjob.domain.host.Host;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.enumeration.Symbol;
@@ -30,7 +29,7 @@ public class TaskManager {
         this.repository = repository;
     }
 
-    public int create(Wal wal, Host host) {
+    public int create(String hostLable, Wal wal) {
         Byte shardingNumber = wal.getShardingNumber();
         shardingNumber = shardingNumber == 0 ? 1 : shardingNumber;
         List<Task> tasks = new ArrayList<>();
@@ -38,11 +37,12 @@ public class TaskManager {
             Task task = Task.newInstance();
             task.setParentId(0L);
             task.setWalId(wal.getWalId());
-            task.setHostId(host.getHostId());
             task.setTriggerId(wal.getTriggerId());
-            task.setExpectedHost("");
-            task.setActualHost("");
+            task.setExpectedHost(wal.getHostLabel());
+            task.setActualHost(hostLable);
             task.setTaskGroup(wal.getWalGroup());
+            task.setExecutorType(wal.getExecutorType());
+            task.setExecutorOption(wal.getExecutorOption());
             task.setTriggerParams(wal.getTriggerParams());
             task.setTaskParams(wal.getTaskParams());
 

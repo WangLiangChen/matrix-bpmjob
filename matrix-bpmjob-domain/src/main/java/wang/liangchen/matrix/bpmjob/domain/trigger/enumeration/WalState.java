@@ -1,6 +1,5 @@
 package wang.liangchen.matrix.bpmjob.domain.trigger.enumeration;
 
-import wang.liangchen.matrix.bpmjob.domain.host.HostState;
 import wang.liangchen.matrix.framework.commons.exception.MatrixWarnException;
 
 /**
@@ -13,8 +12,8 @@ public enum WalState {
         return (byte) (1 << this.ordinal());
     }
 
-    public static HostState valueOf(byte state) {
-        for (HostState value : HostState.values()) {
+    public static WalState valueOf(byte state) {
+        for (WalState value : WalState.values()) {
             if (value.getState() == state) {
                 return value;
             }
