@@ -28,10 +28,10 @@ public class TriggerRequest {
     @NotNull(groups = InsertGroup.class)
     private TriggerType triggerType;
     /**
-     * 不同的触发器类型对应的表达式FIXRATE:1S 1M 1H 1D
+     * 不同的触发器类型对应的表达式
      */
     @NotBlank(groups = InsertGroup.class)
-    private String triggerExpression;
+    private String triggerCron;
 
     /**
      * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
@@ -41,7 +41,7 @@ public class TriggerRequest {
     /**
      * 不同的执行器对应的配置
      */
-    private JsonField executorSettings;
+    private String executorOption;
     /**
      * 错失触发的阈值,单位S
      */
@@ -51,7 +51,7 @@ public class TriggerRequest {
      * 触发错失处理策略
      */
     @NotNull(groups = InsertGroup.class)
-    private MissStrategy missStrategy;
+    private MissedStrategy missedStrategy;
     /**
      * 任务分配策略
      */
@@ -113,12 +113,12 @@ public class TriggerRequest {
         this.triggerType = triggerType;
     }
 
-    public String getTriggerExpression() {
-        return triggerExpression;
+    public String getTriggerCron() {
+        return triggerCron;
     }
 
-    public void setTriggerExpression(String triggerExpression) {
-        this.triggerExpression = triggerExpression;
+    public void setTriggerCron(String triggerCron) {
+        this.triggerCron = triggerCron;
     }
 
     public ExecutorType getExecutorType() {
@@ -129,12 +129,12 @@ public class TriggerRequest {
         this.executorType = executorType;
     }
 
-    public JsonField getExecutorSettings() {
-        return executorSettings;
+    public String getExecutorOption() {
+        return executorOption;
     }
 
-    public void setExecutorSettings(JsonField executorSettings) {
-        this.executorSettings = executorSettings;
+    public void setExecutorOption(String executorOption) {
+        this.executorOption = executorOption;
     }
 
     public Byte getMissThreshold() {
@@ -145,12 +145,12 @@ public class TriggerRequest {
         this.missThreshold = missThreshold;
     }
 
-    public MissStrategy getMissStrategy() {
-        return missStrategy;
+    public MissedStrategy getMissStrategy() {
+        return missedStrategy;
     }
 
-    public void setMissStrategy(MissStrategy missStrategy) {
-        this.missStrategy = missStrategy;
+    public void setMissStrategy(MissedStrategy missedStrategy) {
+        this.missedStrategy = missedStrategy;
     }
 
     public AssignStrategy getAssignStrategy() {

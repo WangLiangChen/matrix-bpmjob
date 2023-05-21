@@ -2,18 +2,13 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.Version;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.*;
-import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
-import wang.liangchen.matrix.framework.data.annotation.ColumnState;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
+import wang.liangchen.matrix.framework.data.dao.entity.CommonEntity;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
-import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
-
-import java.time.LocalDateTime;
 
 /**
  * 触发器
@@ -21,7 +16,7 @@ import java.time.LocalDateTime;
  * @author Liangchen.Wang 2022-11-08 13:24:45
  */
 @Entity(name = "bpmjob_trigger")
-public class Trigger extends RootEntity {
+public class Trigger extends CommonEntity {
     /**
      * PrimaryKey
      */
@@ -65,11 +60,11 @@ public class Trigger extends RootEntity {
     /**
      * 错失触发的阈值,单位S
      */
-    private Byte missThreshold;
+    private Byte missedThreshold;
     /**
      * 触发错失处理策略
      */
-    private MissStrategy missStrategy;
+    private MissedStrategy missedStrategy;
 
     /**
      * 任务分配策略
@@ -92,41 +87,6 @@ public class Trigger extends RootEntity {
     @ColumnJson
     private JsonField taskSettings;
 
-    /**
-     * 版本列
-     * 更新和删除时,非空则启用乐观锁
-     */
-    @Version
-    private Integer version;
-    /**
-     *
-     */
-    private String owner;
-    /**
-     *
-     */
-    private String creator;
-    /**
-     *
-     */
-    private LocalDateTime createDatetime;
-    /**
-     *
-     */
-    private String modifier;
-    /**
-     *
-     */
-    private LocalDateTime modifyDatetime;
-    /**
-     *
-     */
-    private String summary;
-    /**
-     * 状态列
-     */
-    @ColumnState
-    private ConstantEnum state;
 
     public static Trigger valueOf(Object source) {
         return ObjectUtil.INSTANCE.copyProperties(source, Trigger.class);
@@ -216,20 +176,20 @@ public class Trigger extends RootEntity {
         this.shardingNumber = shardingNumber;
     }
 
-    public Byte getMissThreshold() {
-        return missThreshold;
+    public Byte getMissedThreshold() {
+        return missedThreshold;
     }
 
-    public void setMissThreshold(Byte missThreshold) {
-        this.missThreshold = missThreshold;
+    public void setMissedThreshold(Byte missedThreshold) {
+        this.missedThreshold = missedThreshold;
     }
 
-    public MissStrategy getMissStrategy() {
-        return missStrategy;
+    public MissedStrategy getMissedStrategy() {
+        return missedStrategy;
     }
 
-    public void setMissStrategy(MissStrategy missStrategy) {
-        this.missStrategy = missStrategy;
+    public void setMissedStrategy(MissedStrategy missedStrategy) {
+        this.missedStrategy = missedStrategy;
     }
 
     public AssignStrategy getAssignStrategy() {
@@ -262,69 +222,5 @@ public class Trigger extends RootEntity {
 
     public void setTaskSettings(JsonField taskSettings) {
         this.taskSettings = taskSettings;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public String getOwner() {
-        return owner;
-    }
-
-    public void setOwner(String owner) {
-        this.owner = owner;
-    }
-
-    public String getCreator() {
-        return creator;
-    }
-
-    public void setCreator(String creator) {
-        this.creator = creator;
-    }
-
-    public LocalDateTime getCreateDatetime() {
-        return createDatetime;
-    }
-
-    public void setCreateDatetime(LocalDateTime createDatetime) {
-        this.createDatetime = createDatetime;
-    }
-
-    public String getModifier() {
-        return modifier;
-    }
-
-    public void setModifier(String modifier) {
-        this.modifier = modifier;
-    }
-
-    public LocalDateTime getModifyDatetime() {
-        return modifyDatetime;
-    }
-
-    public void setModifyDatetime(LocalDateTime modifyDatetime) {
-        this.modifyDatetime = modifyDatetime;
-    }
-
-    public String getSummary() {
-        return summary;
-    }
-
-    public void setSummary(String summary) {
-        this.summary = summary;
-    }
-
-    public ConstantEnum getState() {
-        return state;
-    }
-
-    public void setState(ConstantEnum state) {
-        this.state = state;
     }
 }

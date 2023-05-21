@@ -56,17 +56,14 @@ public class Wal extends RootEntity {
      */
     private JsonField taskParams;
     /**
+     * 预期触发时间
+     */
+    private LocalDateTime expectedDatetime;
+    /**
      * 创建时间
      */
     private LocalDateTime createDatetime;
-    /**
-     * 实际调度时间
-     */
-    private LocalDateTime scheduleDatetime;
-    /**
-     * 预期触发时间
-     */
-    private LocalDateTime triggerDatetime;
+
     /**
      * 1-acquired;2-triggered
      * 状态列
@@ -161,6 +158,14 @@ public class Wal extends RootEntity {
         this.taskParams = taskParams;
     }
 
+    public LocalDateTime getExpectedDatetime() {
+        return expectedDatetime;
+    }
+
+    public void setExpectedDatetime(LocalDateTime expectedDatetime) {
+        this.expectedDatetime = expectedDatetime;
+    }
+
     public LocalDateTime getCreateDatetime() {
         return createDatetime;
     }
@@ -169,21 +174,6 @@ public class Wal extends RootEntity {
         this.createDatetime = createDatetime;
     }
 
-    public LocalDateTime getScheduleDatetime() {
-        return scheduleDatetime;
-    }
-
-    public void setScheduleDatetime(LocalDateTime scheduleDatetime) {
-        this.scheduleDatetime = scheduleDatetime;
-    }
-
-    public LocalDateTime getTriggerDatetime() {
-        return triggerDatetime;
-    }
-
-    public void setTriggerDatetime(LocalDateTime triggerDatetime) {
-        this.triggerDatetime = triggerDatetime;
-    }
 
     public Byte getState() {
         return state;

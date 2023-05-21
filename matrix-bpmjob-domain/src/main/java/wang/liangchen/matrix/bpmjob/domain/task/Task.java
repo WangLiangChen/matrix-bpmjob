@@ -69,6 +69,10 @@ public class Task extends RootEntity {
      */
     private Byte shardingNumber;
     /**
+     * 预期触发时间
+     */
+    private LocalDateTime expectedDatetime;
+    /**
      * 创建时间
      */
     private LocalDateTime createDatetime;
@@ -210,6 +214,14 @@ public class Task extends RootEntity {
         this.shardingNumber = shardingNumber;
     }
 
+    public LocalDateTime getExpectedDatetime() {
+        return expectedDatetime;
+    }
+
+    public void setExpectedDatetime(LocalDateTime expectedDatetime) {
+        this.expectedDatetime = expectedDatetime;
+    }
+
     public LocalDateTime getCreateDatetime() {
         return createDatetime;
     }
@@ -217,6 +229,7 @@ public class Task extends RootEntity {
     public void setCreateDatetime(LocalDateTime createDatetime) {
         this.createDatetime = createDatetime;
     }
+
 
     public LocalDateTime getAssignDatetime() {
         return assignDatetime;

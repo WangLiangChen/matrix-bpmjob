@@ -49,6 +49,7 @@ public class TaskManager {
             task.setShardingNumber(i);
 
             LocalDateTime now = LocalDateTime.now();
+            task.setExpectedDatetime(wal.getExpectedDatetime());
             task.setCreateDatetime(now);
             task.setAssignDatetime(now);
             task.setAcceptDatetime(now);
@@ -62,24 +63,32 @@ public class TaskManager {
     }
 
     public List<Task> assign(TaskReport taskReport) {
-        // 获取所有可能的任务
+        // 获取UNASSIGNED和ASSIGNED的任务
         Criteria<Task> criteria = Criteria.of(Task.class)
-                .resultFields(Task::getTaskId, Task::getExpectedHost, Task::getCreateDatetime)
-                ._equals(Task::getTaskGroup, taskReport.getTaskGroup());
+                .resultFields(Task::getTaskId, Task::getState, Task::getAssignDatetime)
+                .pageSize(200)
+                ._equals(Task::getTaskGroup, taskReport.getTaskGroup())
+                ._in(Task::getState, TaskState.UNASSIGNED.getState(), TaskState.ASSIGNED.getState());
         List<Task> tasks = this.repository.list(criteria);
         if (CollectionUtil.INSTANCE.isEmpty(tasks)) {
             return Collections.emptyList();
         }
-        // 根据ExpectedHost分组
-        Map<String, List<Task>> taskGroup = tasks.stream().collect(Collectors.groupingBy(Task::getExpectedHost));
-        tasks.clear();
+        LocalDateTime now = LocalDateTime.now();
+        List<Task> candidateTasks = new ArrayList<>();
         String hostLabel = taskReport.getHostLabel();
-        List<Task> candidateTasks = taskGroup.get(hostLabel);
-        candidateTasks.sort(taskComparator());
-        List<Task> sharedTasks = taskGroup.get(Symbol.BLANK.getSymbol());
-        sharedTasks.sort(taskComparator());
-        candidateTasks.addAll(sharedTasks);
+        tasks.forEach(task -> {
+            // 已经assign但超过5S未accept的;客户端设置超时2S;
+            if (TaskState.ASSIGNED.getState() == task.getState() && now.minusSeconds(5).isAfter(task.getAssignDatetime())) {
+                candidateTasks.add(task);
+                return;
+            }
+            String expectedHost = task.getExpectedHost();
+            if (null == expectedHost || expectedHost.isBlank() || hostLabel.equals(expectedHost)) {
+                candidateTasks.add(task);
+            }
+        });
 
+        tasks.clear();
         Byte number = taskReport.getNumber();
         // exclusive tasks
         candidateTasks.forEach(task -> {
@@ -90,20 +99,18 @@ public class TaskManager {
         return tasks;
     }
 
-    public void accept(Long taskId) {
+    public void accept(List<Long> taskIds) {
         UpdateCriteria<Task> updateCriteria = UpdateCriteria.of(Task.class)
                 .forceUpdate(Task::getState, TaskState.ACCEPTED.getState())
                 .forceUpdate(Task::getAcceptDatetime, LocalDateTime.now())
-                ._equals(Task::getTaskId, taskId)
-                ._equals(Task::getState, TaskState.ASSIGNED.getState());
+                ._in(Task::getTaskId, taskIds);
         this.repository.update(updateCriteria);
     }
 
     public void run(Long taskId) {
         UpdateCriteria<Task> updateCriteria = UpdateCriteria.of(Task.class)
                 .forceUpdate(Task::getState, TaskState.EXECUTING.getState())
-                ._equals(Task::getTaskId, taskId)
-                ._equals(Task::getState, TaskState.ACCEPTED.getState());
+                ._equals(Task::getTaskId, taskId);
         this.repository.update(updateCriteria);
     }
 
@@ -114,7 +121,6 @@ public class TaskManager {
         this.repository.update(updateCriteria);
     }
 
-
     public void complete(TaskReport taskReport) {
         Task task = Task.newInstance();
         if (taskReport.getAborted()) {
@@ -122,14 +128,12 @@ public class TaskManager {
         } else {
             task.setState(TaskState.COMPLETED.getState());
         }
-
         task.setCompleteDatetime(LocalDateTime.now());
         task.setCompleteSummary(taskReport.getCompleteSummary());
 
         UpdateCriteria<Task> updateCriteria = UpdateCriteria.of(Task.class)
                 .nonNullUpdate(task)
-                ._equals(Task::getTaskId, taskReport.getTaskId())
-                ._equals(Task::getState, TaskState.EXECUTING.getState());
+                ._equals(Task::getTaskId, taskReport.getTaskId());
         this.repository.update(updateCriteria);
     }
 
@@ -138,18 +142,18 @@ public class TaskManager {
         task.setState(TaskState.ASSIGNED.getState());
         task.setActualHost(hostLabel);
         task.setAssignDatetime(LocalDateTime.now());
-        // 通过状态迁移抢占 UNASSIGNED-->ASSIGNED
+        // 通过状态迁移抢占 UNASSIGNED-->ASSIGNED || ASSIGNED-->ASSIGNED
         UpdateCriteria<Task> updateCriteria = UpdateCriteria.of(task)
                 ._equals(Task::getTaskId, taskId)
-                ._equals(Task::getState, TaskState.UNASSIGNED.getState());
+                ._in(Task::getState, TaskState.UNASSIGNED.getState(), TaskState.ASSIGNED.getState());
         int rows = this.repository.update(updateCriteria);
         // 抢占失败
         if (0 == rows) {
-            logger.info("Exclusive Task failed,task:{}", taskId);
+            logger.info("Exclusive Task failed, task:{}", taskId);
             return;
         }
         // 抢占成功
-        logger.info("Exclusive Task success,task:{}", taskId);
+        logger.info("Exclusive Task success, task:{}", taskId);
         Criteria<Task> criteria = Criteria.of(Task.class)
                 .resultFields(Task::getTaskId, Task::getTriggerParams, Task::getTaskParams, Task::getShardingNumber)
                 ._equals(Task::getTaskId, taskId);

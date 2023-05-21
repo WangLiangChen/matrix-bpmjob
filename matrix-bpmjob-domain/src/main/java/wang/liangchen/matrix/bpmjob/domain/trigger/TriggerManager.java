@@ -113,7 +113,8 @@ public class TriggerManager {
     public List<Long> eligibleWalIds(LocalDateTime duration, int batchSize) {
         Criteria<Wal> criteria = Criteria.of(Wal.class)
                 .resultFields(Wal::getWalId)
-                ._lessThan(Wal::getTriggerDatetime, duration)
+                // 根据实际触发时间
+                ._lessThan(Wal::getCreateDatetime, duration)
                 .pageSize(batchSize).pageNumber(1);
         List<Wal> wals = this.repository.list(criteria);
         return wals.stream().map(Wal::getWalId).collect(Collectors.toList());
@@ -136,11 +137,10 @@ public class TriggerManager {
         wal.setShardingNumber(trigger.getShardingNumber());
 
         wal.setTaskParams(taskParams);
-        wal.setTriggerDatetime(triggerInstant);
 
         LocalDateTime now = LocalDateTime.now();
         wal.setCreateDatetime(now);
-        wal.setScheduleDatetime(now);
+        wal.setExpectedDatetime(triggerInstant);
         wal.setState(WalState.ACQUIRED.getState());
         this.repository.insert(wal);
         return wal;

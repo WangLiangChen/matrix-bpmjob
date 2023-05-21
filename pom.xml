@@ -24,6 +24,7 @@
         <module>matrix-bpmjob-domain</module>
         <module>matrix-bpmjob-task</module>
         <module>matrix-bpmjob-sdk</module>
+        <module>matrix-bpmjob-api</module>
     </modules>
 
     <properties>
@@ -32,7 +33,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <version.matrix>2.0.0-SNAPSHOT</version.matrix>
-        <version.springboot>3.0.1</version.springboot>
+        <version.springboot>3.1.0</version.springboot>
         <version.postgresql>42.4.0</version.postgresql>
         <version.mysql>8.0.29</version.mysql>
         <version.protostuff>1.8.0</version.protostuff>
