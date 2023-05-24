@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>matrix-bpmjob-sdk-core</module>
+        <module>matrix-bpmjob-sdk-example</module>
     </modules>
 
     <properties>

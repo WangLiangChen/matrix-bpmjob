@@ -8,6 +8,7 @@ import java.lang.management.ThreadInfo;
  */
 public class BpmJobThreadInfo {
     private final ThreadInfo threadInfo;
+    private Long taskId;
     private long threadId;
     private String threadName;
     private Thread.State threadState;
@@ -43,6 +44,14 @@ public class BpmJobThreadInfo {
 
     public BpmJobThreadInfo() {
         this(null);
+    }
+
+    public Long getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
     }
 
     public long getThreadId() {

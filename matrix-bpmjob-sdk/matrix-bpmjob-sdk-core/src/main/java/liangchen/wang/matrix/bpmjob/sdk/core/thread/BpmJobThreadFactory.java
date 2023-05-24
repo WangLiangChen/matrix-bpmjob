@@ -22,7 +22,7 @@ public class BpmJobThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable runnable) {
-        return new Thread(this.threadGroup, runnable, String.format("%s%d", this.poolName, this.threadCounter.getAndIncrement()));
+        return new BpmJobThread(this.threadGroup, runnable, String.format("%s%d", this.poolName, this.threadCounter.getAndIncrement()));
     }
 
     public ThreadGroup getThreadGroup() {

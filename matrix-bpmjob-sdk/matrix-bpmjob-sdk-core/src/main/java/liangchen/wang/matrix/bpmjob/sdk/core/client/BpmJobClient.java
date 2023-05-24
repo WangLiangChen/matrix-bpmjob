@@ -1,10 +1,14 @@
 package liangchen.wang.matrix.bpmjob.sdk.core.client;
 
 
-import io.netty.util.concurrent.DefaultThreadFactory;
 import liangchen.wang.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
+import liangchen.wang.matrix.bpmjob.sdk.core.annotation.BpmJob;
+import liangchen.wang.matrix.bpmjob.sdk.core.client.dto.ExecutorReport;
 import liangchen.wang.matrix.bpmjob.sdk.core.client.dto.TaskResponse;
 import liangchen.wang.matrix.bpmjob.sdk.core.enums.ExecutorType;
+import liangchen.wang.matrix.bpmjob.sdk.core.runtime.ClassScanner;
+import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobExecutor;
+import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadInfo;
 import liangchen.wang.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
@@ -12,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ThreadInfo;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -57,6 +62,27 @@ public final class BpmJobClient {
         }
         if (slowTaskExecutor instanceof ThreadPoolExecutor) {
             threadMonitors.put(ExecutorType.SLOW_TASK_RUNNER, (ThreadPoolExecutor) slowTaskExecutor);
+        }
+        scanClassesAndReport();
+    }
+
+    private void scanClassesAndReport() {
+        Set<Method> finalMethods = new HashSet<>();
+        Set<ExecutorReport> executorReports = new HashSet<>();
+
+        Set<Class<?>> implementedClasses = ClassScanner.INSTANCE.getImplementedClasses(BpmJobExecutor.class);
+        implementedClasses.stream().filter(clazz -> clazz != BpmJobExecutor.class).forEach(clazz -> {
+            Method[] declaredMethods = clazz.getDeclaredMethods();
+            for (Method declaredMethod : declaredMethods) {
+                finalMethods.add(declaredMethod);
+                executorReports.add(new ExecutorReport(clazz.getName(), declaredMethod.getName(), null));
+            }
+        });
+        Set<Method> annotatedMethods = ClassScanner.INSTANCE.getAnnotatedMethods(BpmJob.class);
+        for (Method annotatedMethod : annotatedMethods) {
+            finalMethods.add(annotatedMethod);
+            BpmJob annotation = annotatedMethod.getAnnotation(BpmJob.class);
+            String value = annotation.value();
         }
     }
 
@@ -135,7 +161,7 @@ public final class BpmJobClient {
         private void runTasks(List<TaskResponse> tasks) {
             for (TaskResponse task : tasks) {
                 ExecutorService executor = resolveExecutor(task);
-                executor.execute(new TaskProcessor(task, () -> {
+                executor.execute(new RunTaskProcessor(task, () -> {
                     // do anything
                 }, () -> {
                     // report success
@@ -154,13 +180,13 @@ public final class BpmJobClient {
         }
     }
 
-    private class TaskProcessor implements Runnable {
+    private class RunTaskProcessor implements Runnable {
         private final TaskResponse task;
         private final Runnable preProcessor;
         private final Runnable postProcessor;
         private final Consumer<Exception> errorHandler;
 
-        private TaskProcessor(TaskResponse task, Runnable preProcessor, Runnable postProcessor, Consumer<Exception> errorHandler) {
+        private RunTaskProcessor(TaskResponse task, Runnable preProcessor, Runnable postProcessor, Consumer<Exception> errorHandler) {
             this.task = task;
             this.preProcessor = preProcessor;
             this.postProcessor = postProcessor;
@@ -169,6 +195,7 @@ public final class BpmJobClient {
 
         @Override
         public void run() {
+            wrapThread();
             Exception exception = null;
             // pre and run
             try {
@@ -188,9 +215,20 @@ public final class BpmJobClient {
             errorHandler.accept(exception);
         }
 
+        /**
+         * 包装线程,将taskId传递给线程
+         */
+        private void wrapThread() {
+            Thread thread = Thread.currentThread();
+            if (thread instanceof BpmJobThread) {
+                ((BpmJobThread) thread).setTaskId(task.getTaskId());
+            }
+        }
+
         private void runTask(TaskResponse task) {
 
         }
+
     }
 
     private class HeartbeatProcessor implements Runnable {
@@ -203,7 +241,7 @@ public final class BpmJobClient {
                     ThreadGroup threadGroup = bpmJobThreadFactory.getThreadGroup();
                     List<ThreadInfo> threadInfos = ThreadSnapshot.INSTANCE.threadInfo(threadGroup);
                     List<BpmJobThreadInfo> bpmJobThreadInfos = threadInfos.stream().map(BpmJobThreadInfo::new).collect(Collectors.toList());
-                    // TODO 怎么搞到taskId
+
                 }
             }));
         }
