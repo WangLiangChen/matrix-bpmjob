@@ -15,6 +15,7 @@ import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 
@@ -148,5 +149,12 @@ public class TriggerManager {
 
     public int deleteWal(Long walId) {
         return this.repository.delete(DeleteCriteria.of(Wal.class)._equals(Wal::getWalId, walId));
+    }
+
+    public Optional<Trigger> state(Long triggerId) {
+        Criteria<Trigger> criteria = Criteria.of(Trigger.class);
+        criteria._equals(Trigger::getTriggerId, triggerId);
+        Trigger trigger = this.repository.select(criteria);
+        return Optional.ofNullable(trigger);
     }
 }

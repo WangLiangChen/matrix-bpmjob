@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -250,14 +251,7 @@ public class TriggerHandler implements DisposableBean {
             missedTrigger(trigger, wal);
             return;
         }
-
-        // immediate
-        if (delayMS <= 0) {
-            offerDelayQueue(wal, 0L);
-            return;
-        }
-
-        // schedule
+        // immediate & schedule
         offerDelayQueue(wal, delayMS);
     }
 
@@ -300,7 +294,10 @@ public class TriggerHandler implements DisposableBean {
                 return;
             }
             try {
-                taskManager.create(this.hostLabel, wal);
+                // 状态正常才创建任务
+                Optional<Trigger> optionalTrigger = triggerManager.state(wal.getTriggerId());
+                optionalTrigger.filter(trigger -> Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key()))
+                        .ifPresent(trigger -> taskManager.create(this.hostLabel, wal));
             } catch (Exception e) {
                 logger.error("create task error", e);
                 throw new MatrixErrorException(e);

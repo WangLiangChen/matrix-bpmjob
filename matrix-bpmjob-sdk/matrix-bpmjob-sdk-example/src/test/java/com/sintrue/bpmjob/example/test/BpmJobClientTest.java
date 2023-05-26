@@ -2,7 +2,6 @@ package com.sintrue.bpmjob.example.test;
 
 import liangchen.wang.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
 import liangchen.wang.matrix.bpmjob.sdk.core.client.BpmJobClient;
-import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobExecutor;
 import org.junit.Test;
 
 /**
