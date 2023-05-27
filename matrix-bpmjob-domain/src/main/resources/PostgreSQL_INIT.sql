@@ -169,6 +169,7 @@ create index if not exists trigger_task_fk on bpmjob_task (
 create index if not exists wal_task_fk on bpmjob_task (
                                                        wal_id
     );
+create index if not exists task_group_state_idx on bpmjob_task (task_group,state);
 
 /*==============================================================*/
 /* Table: bpmjob_tenant                                         */
@@ -297,9 +298,7 @@ comment on column bpmjob_trigger.task_settings is
 /*==============================================================*/
 /* Index: bpmjob_trigger_pk                                     */
 /*==============================================================*/
-create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (
-                                                                       trigger_id
-    );
+create unique index if not exists bpmjob_trigger_pk on bpmjob_trigger (trigger_id);
 
 /*==============================================================*/
 /* Table: bpmjob_trigger_time                                   */
@@ -323,9 +322,8 @@ comment on column bpmjob_trigger_time.trigger_instant is
 /*==============================================================*/
 /* Index: bpmjob_trigger_time_pk                                */
 /*==============================================================*/
-create unique index if not exists bpmjob_trigger_time_pk on bpmjob_trigger_time (
-                                                                                 trigger_id
-    );
+create unique index if not exists bpmjob_trigger_time_pk on bpmjob_trigger_time (trigger_id);
+create index if not exists bpmjob_trigger_time_instant_idx on bpmjob_trigger_time (trigger_instant desc);
 
 /*==============================================================*/
 /* Table: bpmjob_wal                                            */
@@ -389,14 +387,11 @@ comment on column bpmjob_wal.state is
 /*==============================================================*/
 /* Index: bpmjob_wal_pk                                         */
 /*==============================================================*/
-create unique index if not exists bpmjob_wal_pk on bpmjob_wal (
-                                                               wal_id
-    );
+create unique index if not exists bpmjob_wal_pk on bpmjob_wal (wal_id);
 
 /*==============================================================*/
 /* Index: trigger_wal_fk                                        */
 /*==============================================================*/
-create index if not exists trigger_wal_fk on bpmjob_wal (
-                                                         trigger_id
-    );
+create index if not exists trigger_wal_fk on bpmjob_wal (trigger_id);
+create index if not exists bpmjob_wal_create_idx on bpmjob_wal (create_datetime desc);
 

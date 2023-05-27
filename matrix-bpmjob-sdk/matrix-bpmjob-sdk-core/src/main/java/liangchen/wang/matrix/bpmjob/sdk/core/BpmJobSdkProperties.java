@@ -5,6 +5,18 @@ package liangchen.wang.matrix.bpmjob.sdk.core;
  */
 public class BpmJobSdkProperties {
     /**
+     * 租户Id
+     */
+    private String tenantId;
+    /**
+     * 应用Id
+     */
+    private String appId;
+    /**
+     * 签名验签密钥
+     */
+    private String secret;
+    /**
      * 执行任务的线程数
      */
     private byte taskThreadNumber = 16;
@@ -22,6 +34,30 @@ public class BpmJobSdkProperties {
      */
     private String ip;
     private String serverURI;
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public String getAppId() {
+        return appId;
+    }
+
+    public void setAppId(String appId) {
+        this.appId = appId;
+    }
+
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
 
     public byte getTaskThreadNumber() {
         return taskThreadNumber;

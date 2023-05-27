@@ -1,7 +1,7 @@
 package liangchen.wang.matrix.bpmjob.sdk.core.client;
 
 import liangchen.wang.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
-import liangchen.wang.matrix.bpmjob.sdk.core.client.dto.TaskResponse;
+import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,16 +17,16 @@ public class TaskClient {
         this.bpmJobSdkProperties = bpmJobSdkProperties;
     }
 
-    protected List<TaskResponse> getTasks(int number) {
+    public List<TaskResponse> getTasks(int number) {
         // 不处理异常
         return Collections.emptyList();
     }
 
-    protected void acceptTasks(Set<Long> taskIds) {
+    public void acceptTasks(Set<Long> taskIds) {
 
     }
 
-    protected void completeTask(Long taskId, Exception exception) {
+    public void completeTask(Long taskId, Exception exception) {
 
     }
 

@@ -25,6 +25,7 @@
         <module>matrix-bpmjob-task</module>
         <module>matrix-bpmjob-sdk</module>
         <module>matrix-bpmjob-api</module>
+        <module>matrix-bpmjob-service</module>
     </modules>
 
     <properties>
@@ -47,6 +48,41 @@
                 <version>${version.springboot}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-console</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-sdk</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-service</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-task</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-trigger</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>wang.liangchen.matrix</groupId>

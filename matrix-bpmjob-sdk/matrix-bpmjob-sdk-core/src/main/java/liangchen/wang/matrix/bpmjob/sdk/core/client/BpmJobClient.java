@@ -3,17 +3,17 @@ package liangchen.wang.matrix.bpmjob.sdk.core.client;
 
 import liangchen.wang.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
 import liangchen.wang.matrix.bpmjob.sdk.core.annotation.BpmJob;
-import liangchen.wang.matrix.bpmjob.sdk.core.client.dto.ExecutorReport;
-import liangchen.wang.matrix.bpmjob.sdk.core.client.dto.TaskResponse;
 import liangchen.wang.matrix.bpmjob.sdk.core.enums.ExecutorType;
 import liangchen.wang.matrix.bpmjob.sdk.core.runtime.ClassScanner;
-import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobExecutor;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadInfo;
 import liangchen.wang.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
+import liangchen.wang.matrix.bpmjob.sdk.core.utils.WebClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import wang.liangchen.matrix.bpmjob.api.ExecutorMethod;
+import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 public final class BpmJobClient {
     private final static Logger logger = LoggerFactory.getLogger(BpmJobClient.class);
     private final static AtomicInteger clientCounter = new AtomicInteger();
+    private final static Map<ExecutorMethod, Method> executorMethods = new HashMap<>();
     private final String clientName;
     private final BpmJobSdkProperties bpmJobSdkProperties;
     private final TaskClient taskClient;
@@ -39,6 +40,35 @@ public final class BpmJobClient {
     private final ScheduledExecutorService getTaskExecutor;
     private final ScheduledExecutorService heartbeatExecutor;
     private final Map<ExecutorType, ThreadPoolExecutor> threadMonitors = new HashMap<>();
+
+    static {
+        // 实现BpmJobExecutor接口的方法
+        Set<Class<?>> implementedClasses = ClassScanner.INSTANCE.getImplementedClasses(liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobExecutor.class);
+        implementedClasses.stream().filter(clazz -> clazz != liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobExecutor.class).forEach(clazz -> {
+            Method[] declaredMethods = clazz.getDeclaredMethods();
+            String className = clazz.getName();
+            for (Method declaredMethod : declaredMethods) {
+                String methodName = declaredMethod.getName();
+                executorMethods.put(ExecutorMethod.newInstance(className, methodName, methodName), declaredMethod);
+            }
+        });
+        // 注解的方法
+        Set<Method> annotatedMethods = ClassScanner.INSTANCE.getAnnotatedMethods(BpmJob.class);
+        for (Method annotatedMethod : annotatedMethods) {
+            Class<?> clazz = annotatedMethod.getDeclaringClass();
+            String className = clazz.getName();
+            String methodName = annotatedMethod.getName();
+            executorMethods.put(ExecutorMethod.newInstance(className, methodName, methodName), annotatedMethod);
+            BpmJob annotation = annotatedMethod.getAnnotation(BpmJob.class);
+            String value = annotation.value();
+            if (null != value) {
+                executorMethods.put(ExecutorMethod.newInstance(className, methodName, value), annotatedMethod);
+            }
+            for (String name : annotation.names()) {
+                executorMethods.put(ExecutorMethod.newInstance(className, methodName, name), annotatedMethod);
+            }
+        }
+    }
 
     public BpmJobClient(BpmJobSdkProperties bpmJobSdkProperties) {
         this.clientName = String.format("bpmjob-client-%d", clientCounter.getAndIncrement());
@@ -63,27 +93,11 @@ public final class BpmJobClient {
         if (slowTaskExecutor instanceof ThreadPoolExecutor) {
             threadMonitors.put(ExecutorType.SLOW_TASK_RUNNER, (ThreadPoolExecutor) slowTaskExecutor);
         }
-        scanClassesAndReport();
+        reportExecutorMethods();
     }
-
-    private void scanClassesAndReport() {
-        Set<Method> finalMethods = new HashSet<>();
-        Set<ExecutorReport> executorReports = new HashSet<>();
-
-        Set<Class<?>> implementedClasses = ClassScanner.INSTANCE.getImplementedClasses(BpmJobExecutor.class);
-        implementedClasses.stream().filter(clazz -> clazz != BpmJobExecutor.class).forEach(clazz -> {
-            Method[] declaredMethods = clazz.getDeclaredMethods();
-            for (Method declaredMethod : declaredMethods) {
-                finalMethods.add(declaredMethod);
-                executorReports.add(new ExecutorReport(clazz.getName(), declaredMethod.getName(), null));
-            }
-        });
-        Set<Method> annotatedMethods = ClassScanner.INSTANCE.getAnnotatedMethods(BpmJob.class);
-        for (Method annotatedMethod : annotatedMethods) {
-            finalMethods.add(annotatedMethod);
-            BpmJob annotation = annotatedMethod.getAnnotation(BpmJob.class);
-            String value = annotation.value();
-        }
+    private void reportExecutorMethods(){
+        executorMethods.keySet();
+        WebClientUtil.INSTANCE.post("http://127.0.0.1:8080/report/executorMethods",executorMethods.keySet());
     }
 
     public void start() {
