@@ -5,6 +5,7 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
+import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.exception.MatrixInfoException;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
@@ -40,10 +41,15 @@ public class TriggerManager {
         } catch (Exception e) {
             throw new MatrixInfoException("The expression '{}' is invalid.", triggerExpression);
         }
-        trigger.setState(TriggerState.NORMAL);
         trigger.initializeFields();
         this.repository.insert(trigger);
-        createTriggerInstant(trigger.getTriggerId(), cronExpression);
+        if (null == trigger.getState()) {
+            trigger.setState(TriggerState.NORMAL);
+        }
+        if (TriggerState.NORMAL == trigger.getState()) {
+            // 立即启动才创建触发时刻
+            createTriggerInstant(trigger.getTriggerId(), cronExpression);
+        }
     }
 
     public boolean enableTrigger(Long triggerId) {
@@ -131,7 +137,8 @@ public class TriggerManager {
         Wal wal = Wal.newInstance();
         wal.setTriggerId(trigger.getTriggerId());
         wal.setHostLabel(hostLabel);
-        wal.setWalGroup(trigger.getTriggerGroup());
+        wal.setTenantCode(trigger.getTenantCode());
+        wal.setAppCode(trigger.getAppCode());
         wal.setExecutorType(trigger.getExecutorType());
         wal.setExecutorOption(trigger.getExecutorOption());
         wal.setTriggerParams(trigger.getTriggerParams());

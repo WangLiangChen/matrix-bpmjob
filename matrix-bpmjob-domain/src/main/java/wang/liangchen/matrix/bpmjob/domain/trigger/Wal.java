@@ -30,10 +30,8 @@ public class Wal extends RootEntity {
      */
     private Long triggerId;
     private String hostLabel;
-    /**
-     * 分组标识{tenantCode}-{consumerCode}
-     */
-    private String walGroup;
+    private String tenantCode;
+    private String appCode;
     /**
      * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
@@ -110,12 +108,20 @@ public class Wal extends RootEntity {
         this.hostLabel = hostLabel;
     }
 
-    public String getWalGroup() {
-        return walGroup;
+    public String getTenantCode() {
+        return tenantCode;
     }
 
-    public void setWalGroup(String walGroup) {
-        this.walGroup = walGroup;
+    public void setTenantCode(String tenantCode) {
+        this.tenantCode = tenantCode;
+    }
+
+    public String getAppCode() {
+        return appCode;
+    }
+
+    public void setAppCode(String appCode) {
+        this.appCode = appCode;
     }
 
     public ExecutorType getExecutorType() {

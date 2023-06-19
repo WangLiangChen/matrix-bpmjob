@@ -1,20 +1,22 @@
-package wang.liangchen.matrix.bpmjob.trigger;
+package wang.liangchen.matrix.bpmjob.trigger.handler;
 
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
-import wang.liangchen.matrix.bpmjob.domain.task.TaskManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerManager;
 import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerTime;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissedStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
+import wang.liangchen.matrix.bpmjob.trigger.event.TaskCreationEvent;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.datetime.DateTimeUtil;
 import wang.liangchen.matrix.framework.commons.exception.MatrixErrorException;
@@ -37,15 +39,12 @@ import java.util.concurrent.TimeUnit;
  * @author Liangchen.Wang
  */
 @Service
-public class TriggerHandler implements DisposableBean {
+public class TriggerHandler implements DisposableBean, ApplicationEventPublisherAware {
     private final static Logger logger = LoggerFactory.getLogger(TriggerHandler.class);
 
+    private ApplicationEventPublisher applicationEventPublisher;
     private final TriggerManager triggerManager;
-    private final TaskManager taskManager;
-    private final String hostLabel;
-    private final Short batchSize;
-    private Duration acquireTriggerDuration;
-    private Duration missedThreshold;
+    private final TriggerProperties triggerProperties;
 
 
     private volatile boolean halted = false;
@@ -54,32 +53,156 @@ public class TriggerHandler implements DisposableBean {
     private final WalThread walThread = new WalThread();
     private final ScheduledThreadPoolExecutor triggerPool;
 
-    @Inject
-    public TriggerHandler(TriggerManager triggerManager, TaskManager taskManager, ObjectProvider<TriggerProperties> triggerPropertiesObjectProvider) {
-        this.triggerManager = triggerManager;
-        this.taskManager = taskManager;
-        TriggerProperties triggerProperties = triggerPropertiesObjectProvider.getIfAvailable(TriggerProperties::new);
-        this.triggerPool = new ScheduledThreadPoolExecutor(triggerProperties.getThreadNumber(), new CustomizableThreadFactory("job-"));
-        this.hostLabel = triggerProperties.getHostLabel();
-        this.batchSize = triggerProperties.getBatchSize();
-        this.acquireTriggerDuration = triggerProperties.getAcquireTriggerDuration();
-        this.missedThreshold = triggerProperties.getMissedThreshold();
 
+    @Inject
+    public TriggerHandler(TriggerManager triggerManager, ObjectProvider<TriggerProperties> triggerPropertiesObjectProvider) {
+        this.triggerManager = triggerManager;
+        this.triggerProperties = triggerPropertiesObjectProvider.getIfAvailable(TriggerProperties::new);
+        this.triggerPool = new ScheduledThreadPoolExecutor(triggerProperties.getThreadNumber(), new CustomizableThreadFactory("job-"));
         // start thread
         this.walThread.start();
         this.triggerThread.start();
     }
 
     @Override
+    public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
+        this.applicationEventPublisher = applicationEventPublisher;
+    }
+
+    @Override
     public void destroy() throws Exception {
         // halt all threads
         this.halted = true;
-        logger.info("Waiting for task creation to complete ...");
+        logger.info("Waiting for job to complete ...");
         this.countDownLatch.await();
         logger.info("Waiting for thread pool shutdown ...");
         this.triggerPool.shutdown();
-        boolean shutdown = this.triggerPool.awaitTermination(1, TimeUnit.MINUTES);
+        boolean shutdown = this.triggerPool.awaitTermination(1, TimeUnit.HOURS);
         logger.info("thread pool shutdown: {}", shutdown);
+    }
+
+    private class TriggerThread extends Thread {
+        TriggerThread() {
+            super("trigger-");
+        }
+
+        @Override
+        public void run() {
+            long sleep = 0;
+            while (true) {
+                /*--------------------------halted and break-------------------------------*/
+                if (halted) {
+                    countDownLatch.countDown();
+                    logger.info("The TriggerThread is halted. Shutdown...");
+                    break;
+                }
+                /*--------------------------need sleep become some reasons-------------------------------*/
+                if (sleep > 0) {
+                    ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, sleep);
+                    sleep = 0;
+                }
+                /*--------------------------acquire eligible triggers-------------------------------*/
+                List<TriggerTime> triggerTimes;
+                try {
+                    triggerTimes = acquireTriggerTimes();
+                    if (CollectionUtil.INSTANCE.isEmpty(triggerTimes)) {
+                        sleep = 1;
+                        logger.info("Triggers acquisition empty.delay '{}s' and then retry", sleep);
+                        continue;
+                    }
+                } catch (Exception e) {
+                    sleep = 5;
+                    logger.error("Triggers acquisition failed.delay '{}s' and then retry", sleep);
+                    continue;
+                }
+                /*--------------------------exclusive trigger and fire it-------------------------------*/
+                for (TriggerTime triggerTime : triggerTimes) {
+                    try {
+                        exclusiveTrigger(triggerTime);
+                    } catch (Exception e) {
+                        logger.error("Trigger exclusive failure.Trigger: " + triggerTime.getTriggerId(), e);
+                    }
+                }
+            }
+        }
+    }
+
+
+    private List<TriggerTime> acquireTriggerTimes() {
+        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
+        // 未来xS之前应该触发的所有触发器
+        LocalDateTime duration = now.plus(this.triggerProperties.getAcquireTriggerDuration());
+        // future: triggerInstant < now+acquireTriggerDuration
+        List<TriggerTime> triggerTimes = triggerManager.eligibleTriggerTimes(duration, this.triggerProperties.getBatchSize());
+        // 乱序
+        Collections.shuffle(triggerTimes);
+        return triggerTimes;
+    }
+
+    private void exclusiveTrigger(TriggerTime triggerTime) {
+        Long triggerId = triggerTime.getTriggerId();
+        Trigger trigger = triggerManager.selectTrigger(triggerId,
+                Trigger::getTriggerId, Trigger::getTenantCode, Trigger::getAppCode, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerCron,
+                Trigger::getExecutorType, Trigger::getExecutorOption, Trigger::getMissedThreshold, Trigger::getMissedStrategy, Trigger::getAssignStrategy,
+                Trigger::getShardingStrategy, Trigger::getShardingNumber, Trigger::getTriggerParams, Trigger::getExtendedSettings, Trigger::getTaskSettings, Trigger::getState);
+        if (null == trigger) {
+            logger.info("Trigger '{}' doesnot exist", triggerId);
+            return;
+        }
+        String hostLabel = this.triggerProperties.getHostLabel();
+        if (!Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key())) {
+            logger.info("The state of trigger '{}' isn't NORMAL,skipped by Host:{}", triggerId, hostLabel);
+            return;
+        }
+
+        logger.info("The trigger '{}' is desired by Host:{}", triggerId, hostLabel);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime triggerInstant = triggerTime.getTriggerInstant();
+        long delayMS = Duration.between(now, triggerInstant).toMillis();
+        boolean missed = delayMS <= -this.triggerProperties.getMissedThreshold().toMillis();
+
+        // parse the next trigger instant, if missed,benchmark is now
+        LocalDateTime benchmark = missed ? now : triggerInstant;
+        LocalDateTime nextTriggerInstant = CronExpression.parse(trigger.getTriggerCron()).next(benchmark);
+
+        // 在同一事务中,通过update抢占操作权和创建预写日志
+        Optional<Wal> optionalWal = TransactionUtil.INSTANCE.execute(() -> {
+            boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
+            if (renew) {
+                logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, hostLabel);
+                Wal innerWal = triggerManager.createWal(hostLabel, trigger, triggerInstant, JsonField.newInstance());
+                logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), hostLabel);
+                return Optional.of(innerWal);
+            }
+            logger.info("Exclusive Trigger Failure. Trigger:{}, Host:{}", triggerId, hostLabel);
+            return Optional.empty();
+        });
+        optionalWal.ifPresent(wal -> {
+            // miss
+            if (missed) {
+                missedTrigger(trigger, wal);
+                return;
+            }
+            // immediate & schedule
+            offerDelayQueue(wal, delayMS);
+        });
+    }
+
+
+    private void missedTrigger(Trigger trigger, Wal wal) {
+        MissedStrategy missedStrategy = trigger.getMissedStrategy();
+        logger.info("MissedStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missedStrategy, wal.getWalId(), wal.getTriggerId(), this.triggerProperties.getHostLabel());
+        switch (missedStrategy) {
+            case COMPENSATE:
+                offerDelayQueue(wal, 0L);
+                break;
+            case SKIP:
+                confirmWal(wal);
+                logger.info("Skip missed Wal:{}, Trigger:{}", wal.getWalId(), wal.getTriggerId());
+                break;
+            default:
+                break;
+        }
     }
 
     private class WalThread extends Thread {
@@ -132,7 +255,7 @@ public class TriggerHandler implements DisposableBean {
         LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
         // past: triggerInstant < now - 2s
         LocalDateTime duration = now.minusSeconds(2);
-        List<Long> walIds = triggerManager.eligibleWalIds(duration, this.batchSize);
+        List<Long> walIds = triggerManager.eligibleWalIds(duration, this.triggerProperties.getBatchSize());
         // 乱序
         Collections.shuffle(walIds);
         return walIds;
@@ -140,6 +263,7 @@ public class TriggerHandler implements DisposableBean {
 
     private void exclusiveAndRedoWal(Long walId) {
         Wal wal = triggerManager.selectWal(walId);
+        String hostLabel = this.triggerProperties.getHostLabel();
         if (null == wal) {
             logger.info("Wal '{}' doesn't exist,Maybe It has been confirmed.skipped by Host:{}", walId, hostLabel);
             return;
@@ -148,139 +272,16 @@ public class TriggerHandler implements DisposableBean {
         offerDelayQueue(wal, 0L);
     }
 
-    private class TriggerThread extends Thread {
-        TriggerThread() {
-            super("trigger-");
-        }
-
-        @Override
-        public void run() {
-            long sleep = 0;
-            while (true) {
-                /*--------------------------halted and break-------------------------------*/
-                if (halted) {
-                    countDownLatch.countDown();
-                    logger.info("The WalThread is halted. Shutdown...");
-                    break;
-                }
-                /*--------------------------need sleep become some reasons-------------------------------*/
-                if (sleep > 0) {
-                    ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, sleep);
-                    sleep = 0;
-                }
-                /*--------------------------acquire eligible triggers-------------------------------*/
-                List<TriggerTime> triggerTimes;
-                try {
-                    triggerTimes = acquireTriggerTimes();
-                    if (CollectionUtil.INSTANCE.isEmpty(triggerTimes)) {
-                        sleep = 1;
-                        logger.info("Triggers acquisition empty.delay '{}s' and then retry", sleep);
-                        continue;
-                    }
-                } catch (Exception e) {
-                    sleep = 5;
-                    logger.error("Triggers acquisition failed.delay '{}s' and then retry", sleep);
-                    continue;
-                }
-                /*--------------------------exclusive trigger and fire it-------------------------------*/
-                for (TriggerTime triggerTime : triggerTimes) {
-                    try {
-                        exclusiveTrigger(triggerTime);
-                    } catch (Exception e) {
-                        logger.error("Trigger exclusive failure.Trigger: " + triggerTime.getTriggerId(), e);
-                    }
-                }
-            }
-        }
-    }
-
-
-    private List<TriggerTime> acquireTriggerTimes() {
-        LocalDateTime now = DateTimeUtil.INSTANCE.alignLocalDateTimeSecond();
-        // 未来15S之前应该触发的所有触发器
-        LocalDateTime duration = now.plus(this.acquireTriggerDuration);
-        // future: triggerInstant < now+acquireTriggerDuration
-        List<TriggerTime> triggerTimes = triggerManager.eligibleTriggerTimes(duration, batchSize);
-        // 乱序
-        Collections.shuffle(triggerTimes);
-        return triggerTimes;
-    }
-
-    private void exclusiveTrigger(TriggerTime triggerTime) {
-        Long triggerId = triggerTime.getTriggerId();
-        Trigger trigger = triggerManager.selectTrigger(triggerId,
-                Trigger::getTriggerId, Trigger::getTriggerGroup, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerCron,
-                Trigger::getExecutorType, Trigger::getExecutorOption, Trigger::getMissedThreshold, Trigger::getMissedStrategy, Trigger::getAssignStrategy,
-                Trigger::getShardingStrategy, Trigger::getShardingNumber, Trigger::getTriggerParams, Trigger::getExtendedSettings, Trigger::getTaskSettings, Trigger::getState);
-        if (null == trigger) {
-            return;
-        }
-        if (!Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key())) {
-            logger.info("The state of trigger '{}' isn't NORMAL,skipped by Host:{}", triggerId, hostLabel);
-            return;
-        }
-
-        logger.info("The trigger '{}' is desired by Host:{}", triggerId, hostLabel);
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime triggerInstant = triggerTime.getTriggerInstant();
-        long delayMS = Duration.between(now, triggerInstant).toMillis();
-        boolean missed = delayMS <= -this.missedThreshold.toMillis();
-
-        // parse the next trigger instant, if missed,benchmark is now
-        LocalDateTime benchmark = missed ? now : triggerInstant;
-        LocalDateTime nextTriggerInstant = CronExpression.parse(trigger.getTriggerCron()).next(benchmark);
-
-        // 在同一事务中,通过update抢占操作权和创建预写日志
-        Wal wal = TransactionUtil.INSTANCE.execute(() -> {
-            boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
-            if (renew) {
-                logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-                Wal innerWal = triggerManager.createWal(this.hostLabel, trigger, triggerInstant, JsonField.newInstance());
-                logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), this.hostLabel);
-                return innerWal;
-            }
-            logger.info("Exclusive Trigger Failure. Trigger:{}, Host:{}", triggerId, this.hostLabel);
-            return null;
-        });
-        if (null == wal) {
-            return;
-        }
-
-        // miss
-        if (missed) {
-            missedTrigger(trigger, wal);
-            return;
-        }
-        // immediate & schedule
-        offerDelayQueue(wal, delayMS);
-    }
-
-
-    private void missedTrigger(Trigger trigger, Wal wal) {
-        MissedStrategy missedStrategy = trigger.getMissedStrategy();
-        logger.info("MissedStrategy is:{}.Wal:{},Trigger:{}, Host:{}", missedStrategy, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-        switch (missedStrategy) {
-            case COMPENSATE:
-                offerDelayQueue(wal, 0L);
-                break;
-            case SKIP:
-                confirmWal(wal);
-                logger.info("Skip missed Wal:{}, Trigger:{}", wal.getWalId(), trigger.getTriggerId());
-                break;
-            default:
-                break;
-        }
-    }
-
-
     private void offerDelayQueue(Wal wal, long delayMS) {
+        String hostLabel = this.triggerProperties.getHostLabel();
         if (delayMS < 100) {
-            logger.info("immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
+            logger.info("immediate tasks. delayMS:{},Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), hostLabel);
             triggerPool.execute(() -> confirmWalAndCreateTask(wal));
-        } else {
-            logger.info("asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), this.hostLabel);
-            triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
+            return;
         }
+
+        logger.info("asynchronous tasks. delayMS:{}, Wal:{},Trigger:{}, Host:{}", delayMS, wal.getWalId(), wal.getTriggerId(), hostLabel);
+        triggerPool.schedule(() -> confirmWalAndCreateTask(wal), delayMS, TimeUnit.MILLISECONDS);
     }
 
     private void confirmWalAndCreateTask(Wal wal) {
@@ -297,7 +298,7 @@ public class TriggerHandler implements DisposableBean {
                 // 状态正常才创建任务
                 Optional<Trigger> optionalTrigger = triggerManager.state(wal.getTriggerId());
                 optionalTrigger.filter(trigger -> Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key()))
-                        .ifPresent(trigger -> taskManager.create(this.hostLabel, wal));
+                        .ifPresent(trigger -> applicationEventPublisher.publishEvent(new TaskCreationEvent(this, this.triggerProperties.getHostLabel(), wal)));
             } catch (Exception e) {
                 logger.error("create task error", e);
                 throw new MatrixErrorException(e);

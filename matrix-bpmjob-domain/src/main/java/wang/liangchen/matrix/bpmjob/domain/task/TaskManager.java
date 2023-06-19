@@ -42,7 +42,8 @@ public class TaskManager {
             task.setTriggerId(wal.getTriggerId());
             task.setExpectedHost(wal.getHostLabel());
             task.setActualHost(hostLable);
-            task.setTaskGroup(wal.getWalGroup());
+            task.setTenantCode(wal.getTenantCode());
+            task.setAppCode(wal.getAppCode());
             task.setExecutorType(wal.getExecutorType());
             task.setExecutorOption(wal.getExecutorOption());
             task.setTriggerParams(wal.getTriggerParams());
@@ -69,7 +70,8 @@ public class TaskManager {
         Criteria<Task> criteria = Criteria.of(Task.class)
                 .resultFields(Task::getTaskId, Task::getState, Task::getAssignDatetime)
                 .pageSize(200)
-                ._equals(Task::getTaskGroup, taskReport.getTaskGroup())
+                ._equals(Task::getTenantCode, taskReport.getTenantCode())
+                ._equals(Task::getAppCode, taskReport.getAppCode())
                 ._in(Task::getState, TaskState.UNASSIGNED.getState(), TaskState.ASSIGNED.getState());
         List<Task> tasks = this.repository.list(criteria);
         if (CollectionUtil.INSTANCE.isEmpty(tasks)) {

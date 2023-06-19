@@ -5,7 +5,8 @@ package wang.liangchen.matrix.bpmjob.domain.task;
  */
 public class TaskReport {
     private Long taskId;
-    private String taskGroup;
+    private String tenantCode;
+    private String appCode;
     private String hostLabel;
     /**
      * 要获取的任务数量
@@ -26,12 +27,20 @@ public class TaskReport {
         this.taskId = taskId;
     }
 
-    public String getTaskGroup() {
-        return taskGroup;
+    public String getTenantCode() {
+        return tenantCode;
     }
 
-    public void setTaskGroup(String taskGroup) {
-        this.taskGroup = taskGroup;
+    public void setTenantCode(String tenantCode) {
+        this.tenantCode = tenantCode;
+    }
+
+    public String getAppCode() {
+        return appCode;
+    }
+
+    public void setAppCode(String appCode) {
+        this.appCode = appCode;
     }
 
     public String getHostLabel() {

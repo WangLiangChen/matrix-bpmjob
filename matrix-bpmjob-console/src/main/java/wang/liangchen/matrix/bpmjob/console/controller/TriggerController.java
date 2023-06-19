@@ -3,7 +3,7 @@ package wang.liangchen.matrix.bpmjob.console.controller;
 import jakarta.inject.Inject;
 import org.springframework.web.bind.annotation.*;
 import wang.liangchen.matrix.bpmjob.service.TriggerRequest;
-import wang.liangchen.matrix.bpmjob.service.TriggerService;
+import wang.liangchen.matrix.bpmjob.service.TriggerCreateService;
 
 /**
  * @author Liangchen.Wang 2023-01-18 17:57
@@ -11,10 +11,10 @@ import wang.liangchen.matrix.bpmjob.service.TriggerService;
 @RestController
 @RequestMapping("/trigger")
 public class TriggerController {
-    private final TriggerService service;
+    private final TriggerCreateService service;
 
     @Inject
-    public TriggerController(TriggerService service) {
+    public TriggerController(TriggerCreateService service) {
         this.service = service;
     }
 

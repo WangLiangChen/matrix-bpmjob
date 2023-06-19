@@ -12,8 +12,8 @@ import java.util.concurrent.TimeUnit;
 public class BpmJobClientTest {
     @Test
     public void testScan() throws InterruptedException {
-        BpmJobClient client = new BpmJobClient(new BpmJobSdkProperties());
-        TimeUnit.SECONDS.sleep(10);
+        BpmJobClient client = new BpmJobClient(BpmJobSdkProperties.getInstance());
+        TimeUnit.SECONDS.sleep(6);
 
     }
 }

@@ -4,7 +4,7 @@ import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import wang.liangchen.matrix.bpmjob.service.TriggerRequest;
-import wang.liangchen.matrix.bpmjob.service.TriggerService;
+import wang.liangchen.matrix.bpmjob.service.TriggerCreateService;
 
 /**
  * @author Liangchen.Wang 2022-11-08 17:33
@@ -12,12 +12,12 @@ import wang.liangchen.matrix.bpmjob.service.TriggerService;
 @SpringBootTest
 public class TriggerTest {
     @Resource
-    private TriggerService triggerService;
+    private TriggerCreateService triggerCreateService;
 
     @Test
     public void createTrigger() {
         TriggerRequest triggerRequest = new TriggerRequest();
 
-        triggerService.createTrigger(triggerRequest);
+        triggerCreateService.createTrigger(triggerRequest);
     }
 }

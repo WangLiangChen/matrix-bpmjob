@@ -23,10 +23,8 @@ public class Trigger extends CommonEntity {
     @Id
     @IdStrategy(IdStrategy.Strategy.MatrixFlake)
     private Long triggerId;
-    /**
-     * 分组标识{tenantCode}-{consumerCode}
-     */
-    private String triggerGroup;
+    private String tenantCode;
+    private String appCode;
     /**
      * 名称
      */
@@ -112,12 +110,20 @@ public class Trigger extends CommonEntity {
         this.triggerId = triggerId;
     }
 
-    public String getTriggerGroup() {
-        return triggerGroup;
+    public String getTenantCode() {
+        return tenantCode;
     }
 
-    public void setTriggerGroup(String triggerGroup) {
-        this.triggerGroup = triggerGroup;
+    public void setTenantCode(String tenantCode) {
+        this.tenantCode = tenantCode;
+    }
+
+    public String getAppCode() {
+        return appCode;
+    }
+
+    public void setAppCode(String appCode) {
+        this.appCode = appCode;
     }
 
     public String getTriggerName() {

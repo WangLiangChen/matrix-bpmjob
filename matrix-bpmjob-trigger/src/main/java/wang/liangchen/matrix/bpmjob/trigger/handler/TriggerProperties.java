@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.trigger;
+package wang.liangchen.matrix.bpmjob.trigger.handler;
 
 import wang.liangchen.matrix.framework.commons.network.NetUtil;
 

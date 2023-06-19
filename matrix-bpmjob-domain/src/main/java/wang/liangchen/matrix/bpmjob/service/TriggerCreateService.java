@@ -13,11 +13,11 @@ import wang.liangchen.matrix.framework.commons.validation.ValidationUtil;
  * @author Liangchen.Wang 2023-01-16 14:26
  */
 @Service
-public class TriggerService {
+public class TriggerCreateService {
     private final TriggerManager triggerManager;
 
     @Inject
-    public TriggerService(TriggerManager triggerManager) {
+    public TriggerCreateService(TriggerManager triggerManager) {
         this.triggerManager = triggerManager;
     }
 

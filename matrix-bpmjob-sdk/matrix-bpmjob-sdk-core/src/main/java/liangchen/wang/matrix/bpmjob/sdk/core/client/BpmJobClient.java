@@ -9,7 +9,6 @@ import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
 import liangchen.wang.matrix.bpmjob.sdk.core.thread.BpmJobThreadInfo;
 import liangchen.wang.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
-import liangchen.wang.matrix.bpmjob.sdk.core.utils.WebClientUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wang.liangchen.matrix.bpmjob.api.ExecutorMethod;
@@ -32,6 +31,7 @@ public final class BpmJobClient {
     private final static Map<ExecutorMethod, Method> executorMethods = new HashMap<>();
     private final String clientName;
     private final BpmJobSdkProperties bpmJobSdkProperties;
+    private final ReportHttpClient reportHttpClient;
     private final TaskClient taskClient;
     private volatile boolean halted = false;
     private final AtomicInteger idleThreadCounter;
@@ -73,6 +73,7 @@ public final class BpmJobClient {
     public BpmJobClient(BpmJobSdkProperties bpmJobSdkProperties) {
         this.clientName = String.format("bpmjob-client-%d", clientCounter.getAndIncrement());
         this.bpmJobSdkProperties = bpmJobSdkProperties;
+        this.reportHttpClient = new ReportHttpClient(this.bpmJobSdkProperties.getUri(), this.bpmJobSdkProperties.getTaskUri());
         this.taskClient = new TaskClient(this.bpmJobSdkProperties);
         byte taskThreadNumber = this.bpmJobSdkProperties.getTaskThreadNumber();
         this.idleThreadCounter = new AtomicInteger(taskThreadNumber);
@@ -95,9 +96,9 @@ public final class BpmJobClient {
         }
         reportExecutorMethods();
     }
-    private void reportExecutorMethods(){
-        executorMethods.keySet();
-        WebClientUtil.INSTANCE.post("http://127.0.0.1:8080/report/executorMethods",executorMethods.keySet());
+
+    private void reportExecutorMethods() {
+        this.reportHttpClient.executorMethods(executorMethods.keySet());
     }
 
     public void start() {

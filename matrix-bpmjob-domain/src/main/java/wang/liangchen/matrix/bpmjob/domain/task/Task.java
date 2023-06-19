@@ -44,10 +44,8 @@ public class Task extends RootEntity {
      * 实际分配到任务的executor
      */
     private String actualHost;
-    /**
-     * 分组标识{tenantCode}-{consumerCode}
-     */
-    private String taskGroup;
+    private String tenantCode;
+    private String appCode;
     /**
      * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
      */
@@ -166,12 +164,20 @@ public class Task extends RootEntity {
         this.actualHost = actualHost;
     }
 
-    public String getTaskGroup() {
-        return taskGroup;
+    public String getTenantCode() {
+        return tenantCode;
     }
 
-    public void setTaskGroup(String taskGroup) {
-        this.taskGroup = taskGroup;
+    public void setTenantCode(String tenantCode) {
+        this.tenantCode = tenantCode;
+    }
+
+    public String getAppCode() {
+        return appCode;
+    }
+
+    public void setAppCode(String appCode) {
+        this.appCode = appCode;
     }
 
     public ExecutorType getExecutorType() {
