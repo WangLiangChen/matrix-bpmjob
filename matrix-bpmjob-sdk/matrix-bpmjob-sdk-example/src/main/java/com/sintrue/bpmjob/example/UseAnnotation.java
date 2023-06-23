@@ -1,6 +1,6 @@
 package com.sintrue.bpmjob.example;
 
-import liangchen.wang.matrix.bpmjob.sdk.core.annotation.BpmJob;
+import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
 
 /**
  * @author Liangchen.Wang 2023-05-24 8:26

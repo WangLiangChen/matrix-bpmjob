@@ -2,13 +2,8 @@ package wang.liangchen.matrix.bpmjob.domain.consumer;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.*;
-import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
-import wang.liangchen.matrix.framework.commons.type.ClassUtil;
-import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.CommonEntity;
-import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 
 /**
  * 接入的App

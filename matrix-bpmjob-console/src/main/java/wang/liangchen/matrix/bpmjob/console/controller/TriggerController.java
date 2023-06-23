@@ -2,8 +2,8 @@ package wang.liangchen.matrix.bpmjob.console.controller;
 
 import jakarta.inject.Inject;
 import org.springframework.web.bind.annotation.*;
-import wang.liangchen.matrix.bpmjob.service.TriggerRequest;
 import wang.liangchen.matrix.bpmjob.service.TriggerCreateService;
+import wang.liangchen.matrix.bpmjob.service.TriggerRequest;
 
 /**
  * @author Liangchen.Wang 2023-01-18 17:57

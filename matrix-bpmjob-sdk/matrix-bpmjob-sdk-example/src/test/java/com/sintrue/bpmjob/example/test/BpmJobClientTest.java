@@ -1,8 +1,8 @@
 package com.sintrue.bpmjob.example.test;
 
-import liangchen.wang.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
-import liangchen.wang.matrix.bpmjob.sdk.core.client.BpmJobClient;
 import org.junit.Test;
+import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
+import wang.liangchen.matrix.bpmjob.sdk.core.client.BpmJobClient;
 
 import java.util.concurrent.TimeUnit;
 
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class BpmJobClientTest {
     @Test
     public void testScan() throws InterruptedException {
-        BpmJobClient client = new BpmJobClient(BpmJobSdkProperties.getInstance());
+        BpmJobClient client = new BpmJobClient(BpmJobSdkProperties.getInstance(), taskClientFactory, executorFactory);
         TimeUnit.SECONDS.sleep(6);
 
     }

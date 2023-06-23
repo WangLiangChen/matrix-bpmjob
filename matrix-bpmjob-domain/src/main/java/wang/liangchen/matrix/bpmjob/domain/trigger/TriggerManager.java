@@ -5,7 +5,6 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
-import wang.liangchen.matrix.framework.commons.enumeration.ConstantEnum;
 import wang.liangchen.matrix.framework.commons.exception.MatrixInfoException;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
