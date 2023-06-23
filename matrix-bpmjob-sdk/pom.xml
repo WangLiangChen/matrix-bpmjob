@@ -15,6 +15,7 @@
         <module>matrix-bpmjob-sdk-core</module>
         <module>matrix-bpmjob-sdk-spring</module>
         <module>matrix-bpmjob-sdk-example</module>
+        <module>matrix-bpmjob-sdk-connector</module>
     </modules>
 
     <properties>
@@ -27,6 +28,21 @@
             <dependency>
                 <groupId>wang.liangchen.matrix</groupId>
                 <artifactId>matrix-bpmjob-sdk-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-sdk-connector</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-sdk-spring</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-sdk-example</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

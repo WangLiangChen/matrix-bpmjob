@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.sdk.spring.executor;
+package wang.liangchen.matrix.bpmjob.sdk.spring.factory;
 
 import org.springframework.context.ApplicationContext;
 import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;

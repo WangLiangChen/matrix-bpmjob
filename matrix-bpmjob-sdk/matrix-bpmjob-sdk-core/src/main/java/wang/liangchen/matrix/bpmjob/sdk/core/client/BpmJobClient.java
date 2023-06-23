@@ -5,9 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wang.liangchen.matrix.bpmjob.api.ExecutorMethod;
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
-import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobSdkProperties;
+import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobClientProperties;
 import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
-import wang.liangchen.matrix.bpmjob.sdk.core.enums.ExecutorType;
+import wang.liangchen.matrix.bpmjob.sdk.core.connector.Connector;
+import wang.liangchen.matrix.bpmjob.sdk.core.connector.ConnectorFactory;
+import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.ExecutorType;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmJobExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmjobExecutorFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.runtime.ClassScanner;
@@ -35,8 +38,8 @@ public final class BpmJobClient {
     private final static AtomicInteger clientCounter = new AtomicInteger();
     private final static Map<ExecutorMethod, Method> bpmjobExecutors = new HashMap<>();
     private final String clientName;
-    private final BpmJobSdkProperties bpmJobSdkProperties;
-    private final TaskClient taskClient;
+    private final BpmJobClientProperties bpmJobClientProperties;
+    private final Connector connector;
     private final BpmjobExecutorFactory executorFactory;
     private boolean halted = true;
     private final AtomicInteger idleThreadCounter;
@@ -76,16 +79,16 @@ public final class BpmJobClient {
         }
     }
 
-    public BpmJobClient(BpmJobSdkProperties bpmJobSdkProperties, TaskClientFactory taskClientFactory, BpmjobExecutorFactory executorFactory) {
-        this.bpmJobSdkProperties = bpmJobSdkProperties;
-        this.taskClient = taskClientFactory.createTaskClient();
+    public BpmJobClient(BpmJobClientProperties bpmJobClientProperties, ConnectorFactory connectorFactory, BpmjobExecutorFactory executorFactory) {
+        this.bpmJobClientProperties = bpmJobClientProperties;
+        this.connector = connectorFactory.createConnector();
         this.executorFactory = executorFactory;
         this.clientName = String.format("bpmjob-client-%d", clientCounter.getAndIncrement());
 
         this.taskScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-task-scheduler-", "bpmjob-task-scheduler"));
         this.heartbeatScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-heartbeat-scheduler-", "bpmjob-heartbeat-scheduler"));
 
-        byte taskThreadNumber = this.bpmJobSdkProperties.getTaskThreadNumber();
+        byte taskThreadNumber = this.bpmJobClientProperties.getTaskThreadNumber();
         this.idleThreadCounter = new AtomicInteger(taskThreadNumber);
         this.fastTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-fasttask-", "bpmjob-fasttask"));
         this.slowTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-slowtask-", "bpmjob-slowtask"));
@@ -107,8 +110,8 @@ public final class BpmJobClient {
 
     public synchronized void start() {
         if (this.halted) {
-            this.heartbeatScheduler.schedule(new HeartbeatProcessor(), this.bpmJobSdkProperties.getHeartbeatInterval(), TimeUnit.SECONDS);
-            this.taskScheduler.schedule(new GetTaskProcessor(), this.bpmJobSdkProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
+            this.heartbeatScheduler.schedule(new HeartbeatProcessor(), this.bpmJobClientProperties.getHeartbeatInterval(), TimeUnit.SECONDS);
+            this.taskScheduler.schedule(new GetTaskProcessor(), this.bpmJobClientProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
             // register hooker
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
             this.halted = false;
@@ -140,61 +143,42 @@ public final class BpmJobClient {
     private class GetTaskProcessor implements Runnable {
         @Override
         public void run() {
-            // 空闲线程数即可获取的任务数
             int idleThreadNumber = idleThreadCounter.getAndSet(0);
             if (idleThreadNumber <= 0) {
                 logger.info("No idle threads");
                 return;
             }
-            List<TaskResponse> tasks;
-            try {
-                tasks = taskClient.getTasks(idleThreadNumber);
+            connector.getTasks(idleThreadNumber, tasks -> {
                 if (null == tasks || tasks.isEmpty()) {
-                    logger.info("No task got");
+                    logger.info("No tasks got");
                     idleThreadCounter.addAndGet(idleThreadNumber);
                     return;
                 }
                 int gotNumber = tasks.size();
-                int unusedNumber = idleThreadNumber - gotNumber;
-                if (unusedNumber > 0) {
-                    logger.info("idleThreadNumber:{}, gotNumber:{}, unusedNumber:{}", idleThreadNumber, gotNumber, unusedNumber);
-                    idleThreadCounter.addAndGet(unusedNumber);
+                int spareNumber = idleThreadNumber - gotNumber;
+                if (spareNumber > 0) {
+                    logger.info("idleThreadNumber:{}, gotNumber:{}, spareNumber:{}", idleThreadNumber, gotNumber, spareNumber);
+                    idleThreadCounter.addAndGet(spareNumber);
                 }
-            } catch (Exception e) {
-                logger.error("get tasks error.", e);
+                acceptTasks(tasks);
+            }, throwable -> {
+                logger.error("get tasks error!", throwable);
                 idleThreadCounter.addAndGet(idleThreadNumber);
-                return;
-            }
-            // 接受任务
-            boolean accepted = acceptTasks(tasks);
-            if (accepted) {
-                runTasks(tasks);
-            }
+            });
         }
 
-        private boolean acceptTasks(List<TaskResponse> tasks) {
-            try {
-                taskClient.acceptTasks(tasks.stream().map(TaskResponse::getTaskId).collect(Collectors.toSet()));
-                return Boolean.TRUE;
-            } catch (Exception e) {
-                logger.error("accept tasks error.", e);
-            }
-            return Boolean.FALSE;
+        private void acceptTasks(List<TaskResponse> tasks) {
+            connector.acceptTasks(tasks.stream().map(TaskResponse::getTaskId).collect(Collectors.toSet()),
+                    () -> runTasks(tasks),
+                    throwable -> {
+                        logger.error("accept tasks error!", throwable);
+                    });
         }
 
         private void runTasks(List<TaskResponse> tasks) {
             for (TaskResponse task : tasks) {
                 ExecutorService executor = resolveExecutor(task);
-                executor.execute(new RunTaskProcessor(task, () -> {
-                    // pre
-                }, () -> {
-                    // post
-                    taskClient.completeTask(task.getTaskId(), null);
-                }, exception -> {
-                    logger.error("run task error.", exception);
-                    // report failure
-                    taskClient.completeTask(task.getTaskId(), exception);
-                }));
+                executor.execute(new RunTaskProcessor(task));
             }
         }
 
@@ -206,56 +190,43 @@ public final class BpmJobClient {
 
     private class RunTaskProcessor implements Runnable {
         private final TaskResponse task;
-        private final Runnable preProcessor;
-        private final Runnable postProcessor;
-        private final Consumer<Exception> errorHandler;
 
-        private RunTaskProcessor(TaskResponse task, Runnable preProcessor, Runnable postProcessor, Consumer<Exception> errorHandler) {
+        private RunTaskProcessor(TaskResponse task) {
             this.task = task;
-            this.preProcessor = preProcessor;
-            this.postProcessor = postProcessor;
-            this.errorHandler = errorHandler;
         }
 
         @Override
         public void run() {
-            populateThread();
-            Exception exception = null;
-            // pre and run
-            try {
-                preProcessor.run();
-                runTask(task);
-            } catch (Exception e) {
-                exception = e;
-            } finally {
-                try {
-                    postProcessor.run();
-                } catch (Exception e) {
-                    exception = e;
-                }
-                idleThreadCounter.incrementAndGet();
+            Long taskId = task.getTaskId();
+            String className = task.getClassName();
+            Method method = bpmjobExecutors.get(ExecutorMethod.newInstance(className, task.getMethodName(), task.getAnnotationName()));
+            if (null == method) {
+                logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
+                        taskId, className, task.getMethodName(), task.getAnnotationName());
+                connector.completeTask(taskId, new BpmJobException("The method doesn't exist"), throwable -> {
+                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                });
+                return;
             }
-            if (null != exception) {
-                errorHandler.accept(exception);
-            }
-        }
-
-        /**
-         * 包装线程,将taskId传递给线程
-         */
-        private void populateThread() {
+            // set taskId to Thread
             Thread thread = Thread.currentThread();
             if (thread instanceof BpmJobThread) {
                 ((BpmJobThread) thread).setTaskId(task.getTaskId());
             }
+            try {
+                Object executor = executorFactory.createExecutor(className);
+                method.invoke(executor, task.getJsonStringPatameter());
+            } catch (Exception exception) {
+                connector.completeTask(taskId, exception, throwable -> {
+                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                });
+            } finally {
+                idleThreadCounter.incrementAndGet();
+                connector.completeTask(taskId, throwable -> {
+                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                });
+            }
         }
-
-        private void runTask(TaskResponse task) throws Exception {
-            Object executor = executorFactory.createExecutor(task.getClassName());
-            Method method = bpmjobExecutors.get(ExecutorMethod.newInstance(task.getClassName(), task.getMethodName(), task.getAnnotationName()));
-            method.invoke(executor, task.getJsonStringPatameter());
-        }
-
     }
 
     private class HeartbeatProcessor implements Runnable {

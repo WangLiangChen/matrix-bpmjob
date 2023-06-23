@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.sdk.core.enums;
+package wang.liangchen.matrix.bpmjob.sdk.core.executor;
 
 /**
  * @author Liangchen.Wang 2023-05-21 15:09

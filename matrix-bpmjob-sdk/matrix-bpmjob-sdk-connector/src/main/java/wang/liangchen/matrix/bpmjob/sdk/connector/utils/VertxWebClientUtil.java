@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.sdk.core.utils;
+package wang.liangchen.matrix.bpmjob.sdk.connector.utils;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -22,11 +22,11 @@ import java.util.stream.Collectors;
 /**
  * @author Liangchen.Wang 2023-03-22 20:55
  */
-public enum WebClientUtil {
+public enum VertxWebClientUtil {
     INSTANCE;
     private final WebClient webClient;
 
-    WebClientUtil() {
+    VertxWebClientUtil() {
         Vertx vertx = Vertx.vertx();
         WebClientOptions options = new WebClientOptions();
         options.setUserAgent("bpmjob-client/2.0.0");
