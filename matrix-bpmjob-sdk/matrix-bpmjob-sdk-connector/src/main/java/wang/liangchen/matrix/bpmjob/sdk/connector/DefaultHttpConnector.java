@@ -5,28 +5,30 @@ import wang.liangchen.matrix.bpmjob.sdk.core.connector.Connector;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.concurrent.CompletionStage;
 
 /**
  * @author Liangchen.Wang 2023-06-23 23:11
  */
 public class DefaultHttpConnector implements Connector {
+
     @Override
-    public void getTasks(int number, Consumer<List<TaskResponse>> resultHandler, Consumer<Throwable> throwableHandler) {
+    public CompletionStage<List<TaskResponse>> getTasks(int number) {
+        return null;
     }
 
     @Override
-    public void acceptTasks(Set<Long> taskIds, Runnable resultHandler, Consumer<Throwable> throwableHandler) {
-
+    public CompletionStage<Void> acceptTasks(Set<Long> taskIds) {
+        return null;
     }
 
     @Override
-    public void completeTask(Long taskId, Consumer<Throwable> throwableHandler) {
-
+    public CompletionStage<Void> completeTask(Long taskId) {
+        return null;
     }
 
     @Override
-    public void completeTask(Long taskId, Throwable throwable, Consumer<Throwable> throwableHandler) {
-
+    public CompletionStage<Void> completeTask(Long taskId, Throwable throwable) {
+        return null;
     }
 }

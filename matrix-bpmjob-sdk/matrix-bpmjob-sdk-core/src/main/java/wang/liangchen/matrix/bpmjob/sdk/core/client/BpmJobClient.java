@@ -10,9 +10,9 @@ import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
 import wang.liangchen.matrix.bpmjob.sdk.core.connector.Connector;
 import wang.liangchen.matrix.bpmjob.sdk.core.connector.ConnectorFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
-import wang.liangchen.matrix.bpmjob.sdk.core.executor.ExecutorType;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmJobExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmjobExecutorFactory;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.ExecutorType;
 import wang.liangchen.matrix.bpmjob.sdk.core.runtime.ClassScanner;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +39,7 @@ public final class BpmJobClient {
     private final String clientName;
     private final BpmJobClientProperties bpmJobClientProperties;
     private final Connector connector;
+    private final Executor connectorPool;
     private final BpmjobExecutorFactory executorFactory;
     private boolean halted = true;
     private final AtomicInteger idleThreadCounter;
@@ -85,6 +85,7 @@ public final class BpmJobClient {
         this.executorFactory = executorFactory;
         this.clientName = String.format("bpmjob-client-%d", clientCounter.getAndIncrement());
 
+        this.connectorPool = Executors.newCachedThreadPool(new BpmJobThreadFactory("bpmjob-connector-", "bpmjob-connector"));
         this.taskScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-task-scheduler-", "bpmjob-task-scheduler"));
         this.heartbeatScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-heartbeat-scheduler-", "bpmjob-heartbeat-scheduler"));
 
@@ -148,30 +149,34 @@ public final class BpmJobClient {
                 logger.info("No idle threads");
                 return;
             }
-            connector.getTasks(idleThreadNumber, tasks -> {
-                if (null == tasks || tasks.isEmpty()) {
-                    logger.info("No tasks got");
-                    idleThreadCounter.addAndGet(idleThreadNumber);
-                    return;
-                }
-                int gotNumber = tasks.size();
-                int spareNumber = idleThreadNumber - gotNumber;
-                if (spareNumber > 0) {
-                    logger.info("idleThreadNumber:{}, gotNumber:{}, spareNumber:{}", idleThreadNumber, gotNumber, spareNumber);
-                    idleThreadCounter.addAndGet(spareNumber);
-                }
-                acceptTasks(tasks);
-            }, throwable -> {
-                logger.error("get tasks error!", throwable);
-                idleThreadCounter.addAndGet(idleThreadNumber);
-            });
-        }
-
-        private void acceptTasks(List<TaskResponse> tasks) {
-            connector.acceptTasks(tasks.stream().map(TaskResponse::getTaskId).collect(Collectors.toSet()),
-                    () -> runTasks(tasks),
-                    throwable -> {
-                        logger.error("accept tasks error!", throwable);
+            connector.getTasks(idleThreadNumber)
+                    .whenComplete((tasks, throwable) -> {
+                        if (null != throwable) {
+                            idleThreadCounter.addAndGet(idleThreadNumber);
+                            logger.error("get tasks error.", throwable);
+                            return;
+                        }
+                        if (null == tasks || tasks.isEmpty()) {
+                            idleThreadCounter.addAndGet(idleThreadNumber);
+                            logger.info("No tasks got");
+                            return;
+                        }
+                        int gotNumber = tasks.size();
+                        int spareNumber = idleThreadNumber - gotNumber;
+                        if (spareNumber > 0) {
+                            idleThreadCounter.addAndGet(spareNumber);
+                            logger.info("idleThreadNumber:{}, gotNumber:{}, spareNumber:{}", idleThreadNumber, gotNumber, spareNumber);
+                        }
+                        // accept
+                        Set<Long> taskIds = tasks.stream().map(TaskResponse::getTaskId).collect(Collectors.toSet());
+                        connector.acceptTasks(taskIds)
+                                .whenComplete((empty, acceptThrowable) -> {
+                                    if (null == acceptThrowable) {
+                                        runTasks(tasks);
+                                    } else {
+                                        logger.error("accept tasks error.", acceptThrowable);
+                                    }
+                                });
                     });
         }
 
@@ -203,8 +208,10 @@ public final class BpmJobClient {
             if (null == method) {
                 logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
                         taskId, className, task.getMethodName(), task.getAnnotationName());
-                connector.completeTask(taskId, new BpmJobException("The method doesn't exist"), throwable -> {
-                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                connector.completeTask(taskId, new BpmJobException("The method doesn't exist")).whenComplete((empty, throwable) -> {
+                    if (null != throwable) {
+                        logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
+                    }
                 });
                 return;
             }
@@ -217,13 +224,17 @@ public final class BpmJobClient {
                 Object executor = executorFactory.createExecutor(className);
                 method.invoke(executor, task.getJsonStringPatameter());
             } catch (Exception exception) {
-                connector.completeTask(taskId, exception, throwable -> {
-                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                connector.completeTask(taskId, exception).whenComplete((empty, throwable) -> {
+                    if (null != throwable) {
+                        logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
+                    }
                 });
             } finally {
                 idleThreadCounter.incrementAndGet();
-                connector.completeTask(taskId, throwable -> {
-                    logger.error("complete task error.taskId: ".concat(String.valueOf(taskId)), throwable);
+                connector.completeTask(taskId).whenComplete((empty, throwable) -> {
+                    if (null != throwable) {
+                        logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
+                    }
                 });
             }
         }

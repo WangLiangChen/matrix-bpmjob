@@ -1,9 +1,10 @@
 package wang.liangchen.matrix.bpmjob.sdk.connector.utils;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.authentication.Credentials;
@@ -15,8 +16,8 @@ import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -32,66 +33,75 @@ public enum VertxWebClientUtil {
         options.setUserAgent("bpmjob-client/2.0.0");
         options.setIdleTimeoutUnit(TimeUnit.SECONDS);
         options.setConnectTimeout(5);
-        options.setReadIdleTimeout(3);
-        options.setWriteIdleTimeout(3);
+        options.setReadIdleTimeout(5);
+        options.setWriteIdleTimeout(5);
         options.setIdleTimeout(5);
         webClient = WebClient.create(vertx, options);
     }
 
-    public <T> void postJson(String requestURI, Object body, long timeout, Credentials credentials, Consumer<Throwable> exceptionHandler) {
-        postJson(requestURI, body, timeout, credentials, null, null, exceptionHandler);
+    public <T> CompletionStage<List<T>> postJson(String requestURI, Object body, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams, Class<T> resultClass) {
+        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.POST, requestURI, timeout, credentials, headers, queryParams);
+        Future<HttpResponse<Buffer>> future;
+        if (null == body) {
+            future = request.send();
+        } else {
+            future = request.sendJson(body);
+        }
+        return future.toCompletionStage().thenApply(response -> resolveResult(response.bodyAsJsonObject(), resultClass));
     }
 
-    public <T> void postJson(String requestURI, Object body, long timeout, Credentials credentials, Class<T> resultClass, Consumer<List<T>> resultHandler, Consumer<Throwable> exceptionHandler) {
-        HttpRequest<Buffer> request = webClient.postAbs(requestURI);
+    public <T> CompletionStage<List<T>> getJson(String requestURI, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams, Class<T> resultClass) {
+        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.GET, requestURI, timeout, credentials, headers, queryParams);
+        return request.send().toCompletionStage().thenApply(response -> resolveResult(response.bodyAsJsonObject(), resultClass));
+    }
+
+    private HttpRequest<Buffer> resolveHttpRequest(HttpMethod httpMethod, String requestURI, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams) {
+        HttpRequest<Buffer> request = null;
+        if (HttpMethod.POST == httpMethod) {
+            request = webClient.postAbs(requestURI);
+        } else if (HttpMethod.GET == httpMethod) {
+            request = webClient.getAbs(requestURI);
+        }
+        if (null == request) {
+            throw new BpmJobException("Unsupported HttpMethod:" + httpMethod);
+        }
         if (timeout > 0) {
             request.timeout(timeout);
         }
         if (null != credentials) {
             request.authentication(credentials);
         }
-        if (null == body) {
-            request.send(handler(resultClass, resultHandler, exceptionHandler));
-            return;
+        if (null != headers) {
+            request.putHeaders(headers);
         }
-        request.sendJson(body, handler(resultClass, resultHandler, exceptionHandler));
+        if (null != queryParams) {
+            queryParams.forEach(request::addQueryParam);
+        }
+        return request;
     }
 
-    private <T> Handler<AsyncResult<HttpResponse<Buffer>>> handler(Class<T> resultClass, Consumer<List<T>> resultHandler, Consumer<Throwable> exceptionHandler) {
-        return ar -> {
-            if (ar.failed()) {
-                exceptionHandler.accept(ar.cause());
-                return;
-            }
-            JsonObject jsonObject = ar.result().bodyAsJsonObject();
-            Boolean success = jsonObject.getBoolean("success", Boolean.FALSE);
-            if (!success) {
-                exceptionHandler.accept(new BpmJobException(jsonObject.getString("message")));
-                return;
-            }
 
-            if (null == resultClass) {
-                // no callback
-                return;
-            }
-            Object payload = jsonObject.getValue("payload");
-            if (null == payload) {
-                resultHandler.accept(Collections.emptyList());
-                return;
-            }
-            if (payload instanceof JsonObject) {
-                jsonObject = (JsonObject) payload;
-                resultHandler.accept(Collections.singletonList(jsonObject.mapTo(resultClass)));
-                return;
-            }
+    private <T> List<T> resolveResult(JsonObject jsonObject, Class<T> resultClass) {
+        Boolean success = jsonObject.getBoolean("success", Boolean.FALSE);
+        if (!success) {
+            throw new BpmJobException(jsonObject.getString("message"));
+        }
+        Object payload = jsonObject.getValue("payload");
+        if (null == payload) {
+            return Collections.emptyList();
+        }
+        if (payload instanceof JsonObject) {
+            jsonObject = (JsonObject) payload;
+            return Collections.singletonList(jsonObject.mapTo(resultClass));
+        }
+        if (payload instanceof JsonArray) {
             JsonArray jsonArray = (JsonArray) payload;
             if (jsonArray.isEmpty()) {
-                resultHandler.accept(Collections.emptyList());
-                return;
+                return Collections.emptyList();
             }
-            List<T> list = jsonArray.stream().map(e -> (JsonObject) e).map(e -> e.mapTo(resultClass)).collect(Collectors.toList());
-            resultHandler.accept(list);
-        };
+            return jsonArray.stream().map(e -> (JsonObject) e).map(e -> e.mapTo(resultClass)).collect(Collectors.toList());
+        }
+        return Collections.singletonList(resultClass.cast(payload));
     }
 
 }
