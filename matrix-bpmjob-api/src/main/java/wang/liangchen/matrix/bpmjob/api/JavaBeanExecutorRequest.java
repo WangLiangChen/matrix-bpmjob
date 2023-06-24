@@ -3,20 +3,20 @@ package wang.liangchen.matrix.bpmjob.api;
 /**
  * @author Liangchen.Wang 2023-05-24 9:08
  */
-public class ExecutorMethod {
+public class JavaBeanExecutorRequest {
     private String className;
     private String methodName;
     private String annotationName;
-    public ExecutorMethod(){}
+    public JavaBeanExecutorRequest(){}
 
-    public ExecutorMethod(String className, String methodName, String annotationName) {
+    public JavaBeanExecutorRequest(String className, String methodName, String annotationName) {
         this.className = className;
         this.methodName = methodName;
         this.annotationName = annotationName;
     }
 
-    public static ExecutorMethod newInstance(String className, String methodName, String annotationName) {
-        return new ExecutorMethod(className, methodName, annotationName);
+    public static JavaBeanExecutorRequest newInstance(String className, String methodName, String annotationName) {
+        return new JavaBeanExecutorRequest(className, methodName, annotationName);
     }
 
     public void setClassName(String className) {
@@ -50,7 +50,7 @@ public class ExecutorMethod {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        ExecutorMethod that = (ExecutorMethod) o;
+        JavaBeanExecutorRequest that = (JavaBeanExecutorRequest) o;
 
         if (!className.equals(that.className)) return false;
         if (!methodName.equals(that.methodName)) return false;

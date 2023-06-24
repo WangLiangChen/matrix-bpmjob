@@ -3,7 +3,7 @@ package wang.liangchen.matrix.bpmjob.sdk.core.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import wang.liangchen.matrix.bpmjob.api.ExecutorMethod;
+import wang.liangchen.matrix.bpmjob.api.JavaBeanExecutorRequest;
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobClientProperties;
 import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
@@ -12,11 +12,12 @@ import wang.liangchen.matrix.bpmjob.sdk.core.connector.ConnectorFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmJobExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmjobExecutorFactory;
-import wang.liangchen.matrix.bpmjob.sdk.core.executor.ExecutorType;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.JavaBeanExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.runtime.ClassScanner;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThreadInfo;
+import wang.liangchen.matrix.bpmjob.sdk.core.thread.ThreadPoolType;
 import wang.liangchen.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
 
 import java.lang.management.ThreadInfo;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 public final class BpmJobClient {
     private final static Logger logger = LoggerFactory.getLogger(BpmJobClient.class);
     private final static AtomicInteger clientCounter = new AtomicInteger();
-    private final static Map<ExecutorMethod, Method> bpmjobExecutors = new HashMap<>();
+    private final static Map<JavaBeanExecutor, Method> javaBeanExecutors = new HashMap<>();
     private final String clientName;
     private final BpmJobClientProperties bpmJobClientProperties;
     private final Connector connector;
@@ -47,7 +48,7 @@ public final class BpmJobClient {
     private final ExecutorService slowTaskExecutorPool;
     private final ScheduledExecutorService taskScheduler;
     private final ScheduledExecutorService heartbeatScheduler;
-    private final Map<ExecutorType, ThreadPoolExecutor> threadMonitors = new HashMap<>();
+    private final Map<ThreadPoolType, ThreadPoolExecutor> threadMonitors = new HashMap<>();
 
 
     static {
@@ -58,7 +59,7 @@ public final class BpmJobClient {
             String className = clazz.getName();
             for (Method declaredMethod : declaredMethods) {
                 String methodName = declaredMethod.getName();
-                bpmjobExecutors.put(ExecutorMethod.newInstance(className, methodName, methodName), declaredMethod);
+                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, methodName), declaredMethod);
             }
         });
         // 注解的方法
@@ -67,14 +68,14 @@ public final class BpmJobClient {
             Class<?> clazz = annotatedMethod.getDeclaringClass();
             String className = clazz.getName();
             String methodName = annotatedMethod.getName();
-            bpmjobExecutors.put(ExecutorMethod.newInstance(className, methodName, methodName), annotatedMethod);
+            javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, methodName), annotatedMethod);
             BpmJob annotation = annotatedMethod.getAnnotation(BpmJob.class);
             String value = annotation.value();
             if (null != value) {
-                bpmjobExecutors.put(ExecutorMethod.newInstance(className, methodName, value), annotatedMethod);
+                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, value), annotatedMethod);
             }
             for (String name : annotation.names()) {
-                bpmjobExecutors.put(ExecutorMethod.newInstance(className, methodName, name), annotatedMethod);
+                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, name), annotatedMethod);
             }
         }
     }
@@ -96,17 +97,22 @@ public final class BpmJobClient {
 
         // add thread monitor
         if (this.taskScheduler instanceof ThreadPoolExecutor) {
-            this.threadMonitors.put(ExecutorType.TASK_SCHEDULER, (ThreadPoolExecutor) this.taskScheduler);
+            this.threadMonitors.put(ThreadPoolType.TASK_SCHEDULER, (ThreadPoolExecutor) this.taskScheduler);
         }
         if (this.heartbeatScheduler instanceof ThreadPoolExecutor) {
-            this.threadMonitors.put(ExecutorType.HEARTBEAT_SCHEDULER, (ThreadPoolExecutor) this.heartbeatScheduler);
+            this.threadMonitors.put(ThreadPoolType.HEARTBEAT_SCHEDULER, (ThreadPoolExecutor) this.heartbeatScheduler);
         }
         if (this.fastTaskExecutorPool instanceof ThreadPoolExecutor) {
-            this.threadMonitors.put(ExecutorType.FAST_TASK_RUNNER, (ThreadPoolExecutor) this.fastTaskExecutorPool);
+            this.threadMonitors.put(ThreadPoolType.FAST_TASK_RUNNER, (ThreadPoolExecutor) this.fastTaskExecutorPool);
         }
         if (this.slowTaskExecutorPool instanceof ThreadPoolExecutor) {
-            this.threadMonitors.put(ExecutorType.SLOW_TASK_RUNNER, (ThreadPoolExecutor) this.slowTaskExecutorPool);
+            this.threadMonitors.put(ThreadPoolType.SLOW_TASK_RUNNER, (ThreadPoolExecutor) this.slowTaskExecutorPool);
         }
+        // 上报Executor
+        connector.reportMethods(javaBeanExecutors.keySet())
+                .whenComplete((empty, throwable) -> {
+                    throw new BpmJobException(throwable);
+                });
     }
 
     public synchronized void start() {
@@ -124,8 +130,8 @@ public final class BpmJobClient {
         if (this.halted) {
             return;
         }
-        this.threadMonitors.forEach(((executorType, executor) -> {
-            logger.info("shutdown executor:{}", executorType);
+        this.threadMonitors.forEach(((threadPoolType, executor) -> {
+            logger.info("shutdown executor:{}", threadPoolType);
             shutdownExecutor(executor);
         }));
         logger.info("BpmjobClient '{}' is shutdown", this.clientName);
@@ -204,7 +210,7 @@ public final class BpmJobClient {
         public void run() {
             Long taskId = task.getTaskId();
             String className = task.getClassName();
-            Method method = bpmjobExecutors.get(ExecutorMethod.newInstance(className, task.getMethodName(), task.getAnnotationName()));
+            Method method = javaBeanExecutors.get(JavaBeanExecutorRequest.newInstance(className, task.getMethodName(), task.getAnnotationName()));
             if (null == method) {
                 logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
                         taskId, className, task.getMethodName(), task.getAnnotationName());
@@ -243,7 +249,7 @@ public final class BpmJobClient {
     private class HeartbeatProcessor implements Runnable {
         @Override
         public void run() {
-            threadMonitors.forEach(((executorType, executor) -> {
+            threadMonitors.forEach(((threadPoolType, executor) -> {
                 ThreadFactory threadFactory = executor.getThreadFactory();
                 if (threadFactory instanceof BpmJobThreadFactory) {
                     BpmJobThreadFactory bpmJobThreadFactory = (BpmJobThreadFactory) threadFactory;

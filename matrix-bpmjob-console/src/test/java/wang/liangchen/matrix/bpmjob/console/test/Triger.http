@@ -6,7 +6,7 @@ Content-Type: application/json
   "triggerName": "测试触发器5S",
   "triggerType": "CRON",
   "triggerCron": "2/5 * * * * ?",
-  "executorType": "JAVA_EXECUTOR",
+  "threadPoolType": "JAVA_EXECUTOR",
   "executorOption": "CLASS",
   "missThreshold": 5,
   "missedStrategy": "COMPENSATE",

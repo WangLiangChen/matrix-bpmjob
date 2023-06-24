@@ -1,6 +1,7 @@
 package wang.liangchen.matrix.bpmjob.sdk.core.connector;
 
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.JavaBeanExecutor;
 
 import java.util.List;
 import java.util.Set;
@@ -18,4 +19,5 @@ public interface Connector {
     CompletionStage<Void> completeTask(Long taskId);
 
     CompletionStage<Void> completeTask(Long taskId, Throwable throwable);
+    CompletionStage<Void> reportMethods(Set<JavaBeanExecutor> methods);
 }

@@ -45,6 +45,12 @@
                 <artifactId>matrix-bpmjob-sdk-example</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- Operating System and Hardware Information library -->
+            <dependency>
+                <groupId>com.github.oshi</groupId>
+                <artifactId>oshi-core</artifactId>
+                <version>6.4.3</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

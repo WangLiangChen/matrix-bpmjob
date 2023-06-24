@@ -1,11 +1,7 @@
 package wang.liangchen.bpmjob.service.provider;
 
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import wang.liangchen.matrix.bpmjob.api.ExecutorMethod;
-import wang.liangchen.matrix.framework.commons.exception.MatrixErrorException;
+import org.springframework.web.bind.annotation.*;
+import wang.liangchen.matrix.bpmjob.api.JavaBeanExecutorRequest;
 
 import java.util.Set;
 
@@ -15,11 +11,10 @@ import java.util.Set;
 @RestController
 @RequestMapping("/report")
 public class ReportProvider {
-    @PostMapping("/executorMethods")
-    public Object executorMethods(@RequestBody Set<ExecutorMethod> executorMethodSet) {
-        if(executorMethodSet.size()>0){
-            throw new MatrixErrorException("i am a error");
-        }
-       return executorMethodSet;
+    @PostMapping("/javaBeanExecutors")
+    public void javaBeanExecutors(@RequestHeader("tenant-code") String tenantCode,
+                                  @RequestHeader("app-code") String appCode,
+                                  @RequestBody Set<JavaBeanExecutorRequest> javaBeanExecutors) {
+
     }
 }
