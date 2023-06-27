@@ -11,7 +11,7 @@ public class UseAnnotation {
     public void methodA(String jsonString){
 
     }
-    @BpmJobExecutor("methodBAlias")
+    @BpmJobExecutor(names = "methodBAlias")
     public void methodB(String jsonString){
 
     }

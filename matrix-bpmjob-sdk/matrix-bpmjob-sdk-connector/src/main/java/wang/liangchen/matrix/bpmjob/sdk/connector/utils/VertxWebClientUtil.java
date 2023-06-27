@@ -14,11 +14,12 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * @author Liangchen.Wang 2023-03-22 20:55
@@ -39,8 +40,9 @@ public enum VertxWebClientUtil {
         webClient = WebClient.create(vertx, options);
     }
 
-    public <T> CompletionStage<List<T>> postJson(String requestURI, Object body, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams, Class<T> resultClass) {
-        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.POST, requestURI, timeout, credentials, headers, queryParams);
+
+    public <T> CompletionStage<List<T>> postJson(String requestURI, Map<String, String> queryParams, Object body, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {
+        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.POST, requestURI, queryParams, headers, credentials, timeout);
         Future<HttpResponse<Buffer>> future;
         if (null == body) {
             future = request.send();
@@ -50,12 +52,23 @@ public enum VertxWebClientUtil {
         return future.toCompletionStage().thenApply(response -> resolveResult(response.bodyAsJsonObject(), resultClass));
     }
 
-    public <T> CompletionStage<List<T>> getJson(String requestURI, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams, Class<T> resultClass) {
-        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.GET, requestURI, timeout, credentials, headers, queryParams);
+    public <T> CompletionStage<T> postJson(String requestURI, Object body, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {
+        CompletionStage<List<T>> list = postJson(requestURI, queryParams, body, headers, credentials, timeout, resultClass);
+        return list.thenApply(e -> e.isEmpty() ? null : e.get(0));
+    }
+
+
+    public <T> CompletionStage<List<T>> getList(String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {
+        HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.GET, requestURI, queryParams, headers, credentials, timeout);
         return request.send().toCompletionStage().thenApply(response -> resolveResult(response.bodyAsJsonObject(), resultClass));
     }
 
-    private HttpRequest<Buffer> resolveHttpRequest(HttpMethod httpMethod, String requestURI, long timeout, Credentials credentials, MultiMap headers, MultiMap queryParams) {
+    public <T> CompletionStage<T> getObject(String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {
+        CompletionStage<List<T>> list = getList(requestURI, queryParams, headers, credentials, timeout, resultClass);
+        return list.thenApply(e -> e.isEmpty() ? null : e.get(0));
+    }
+
+    private HttpRequest<Buffer> resolveHttpRequest(HttpMethod httpMethod, String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout) {
         HttpRequest<Buffer> request = null;
         if (HttpMethod.POST == httpMethod) {
             request = webClient.postAbs(requestURI);
@@ -86,6 +99,9 @@ public enum VertxWebClientUtil {
         if (!success) {
             throw new BpmJobException(jsonObject.getString("message"));
         }
+        if (null == resultClass || Void.class == resultClass) {
+            return Collections.emptyList();
+        }
         Object payload = jsonObject.getValue("payload");
         if (null == payload) {
             return Collections.emptyList();
@@ -99,9 +115,22 @@ public enum VertxWebClientUtil {
             if (jsonArray.isEmpty()) {
                 return Collections.emptyList();
             }
-            return jsonArray.stream().map(e -> (JsonObject) e).map(e -> e.mapTo(resultClass)).collect(Collectors.toList());
+            List<T> list = new ArrayList<>(jsonArray.size());
+            jsonArray.forEach(e -> {
+                if (e instanceof String) {
+                    list.add(resultClass.cast(e));
+                    return;
+                }
+                if (e instanceof JsonObject) {
+                    list.add(((JsonObject) e).mapTo(resultClass));
+                }
+            });
+            return list;
         }
-        return Collections.singletonList(resultClass.cast(payload));
+        if (payload instanceof String) {
+            return Collections.singletonList(resultClass.cast(payload));
+        }
+        throw new RuntimeException("The response cannot be casted to an instance of class:" + resultClass);
     }
 
 }

@@ -18,8 +18,6 @@ public interface Connector {
 
     CompletionStage<Void> acceptTasks(Set<Long> taskIds);
 
-    CompletionStage<Void> completeTask(Long taskId);
-
     CompletionStage<Void> completeTask(TaskRequest taskRequest);
 
     CompletionStage<Void> reportMethods(Set<JavaBeanExecutorKey> methods);

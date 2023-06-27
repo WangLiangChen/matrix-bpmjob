@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wang.liangchen.matrix.bpmjob.api.BpmJobThreadInfo;
 import wang.liangchen.matrix.bpmjob.api.HeartbeatRequest;
+import wang.liangchen.matrix.bpmjob.api.TaskRequest;
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobClientProperties;
 import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJobExecutor;
@@ -217,7 +218,7 @@ public final class BpmJobClient {
             if (null == method) {
                 logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
                         taskId, className, task.getMethodName(), task.getAnnotationName());
-                connector.completeTask(taskId, new BpmJobException("The method doesn't exist")).whenComplete((empty, throwable) -> {
+                connector.completeTask(new TaskRequest(taskId, new BpmJobException("The method doesn't exist"))).whenComplete((empty, throwable) -> {
                     if (null != throwable) {
                         logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
                     }
@@ -233,14 +234,14 @@ public final class BpmJobClient {
                 Object executor = executorFactory.createExecutor(className);
                 method.invoke(executor, task.getJsonStringPatameter());
             } catch (Exception exception) {
-                connector.completeTask(taskId, exception).whenComplete((empty, throwable) -> {
+                connector.completeTask(new TaskRequest(taskId, exception)).whenComplete((empty, throwable) -> {
                     if (null != throwable) {
                         logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
                     }
                 });
             } finally {
                 idleThreadCounter.incrementAndGet();
-                connector.completeTask(taskId).whenComplete((empty, throwable) -> {
+                connector.completeTask(new TaskRequest(taskId)).whenComplete((empty, throwable) -> {
                     if (null != throwable) {
                         logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
                     }
