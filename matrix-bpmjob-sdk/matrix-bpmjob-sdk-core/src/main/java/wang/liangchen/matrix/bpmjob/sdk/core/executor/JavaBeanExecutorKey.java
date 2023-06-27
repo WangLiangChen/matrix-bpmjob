@@ -3,19 +3,19 @@ package wang.liangchen.matrix.bpmjob.sdk.core.executor;
 /**
  * @author Liangchen.Wang 2023-05-24 9:08
  */
-public class JavaBeanExecutor {
+public class JavaBeanExecutorKey {
     private final String className;
     private final String methodName;
     private final String annotationName;
 
-    private JavaBeanExecutor(String className, String methodName, String annotationName) {
+    private JavaBeanExecutorKey(String className, String methodName, String annotationName) {
         this.className = className;
         this.methodName = methodName;
         this.annotationName = annotationName;
     }
 
-    public static JavaBeanExecutor newInstance(String className, String methodName, String annotationName) {
-        return new JavaBeanExecutor(className, methodName, annotationName);
+    public static JavaBeanExecutorKey newInstance(String className, String methodName, String annotationName) {
+        return new JavaBeanExecutorKey(className, methodName, annotationName);
     }
 
     public String getClassName() {
@@ -37,7 +37,7 @@ public class JavaBeanExecutor {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        JavaBeanExecutor that = (JavaBeanExecutor) o;
+        JavaBeanExecutorKey that = (JavaBeanExecutorKey) o;
 
         if (!className.equals(that.className)) return false;
         if (!methodName.equals(that.methodName)) return false;

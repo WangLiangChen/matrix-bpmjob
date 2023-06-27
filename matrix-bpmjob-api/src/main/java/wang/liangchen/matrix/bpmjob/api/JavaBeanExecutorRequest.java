@@ -7,61 +7,28 @@ public class JavaBeanExecutorRequest {
     private String className;
     private String methodName;
     private String annotationName;
-    public JavaBeanExecutorRequest(){}
 
-    public JavaBeanExecutorRequest(String className, String methodName, String annotationName) {
-        this.className = className;
-        this.methodName = methodName;
-        this.annotationName = annotationName;
-    }
-
-    public static JavaBeanExecutorRequest newInstance(String className, String methodName, String annotationName) {
-        return new JavaBeanExecutorRequest(className, methodName, annotationName);
+    public String getClassName() {
+        return className;
     }
 
     public void setClassName(String className) {
         this.className = className;
     }
 
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
-
-    public void setAnnotationName(String annotationName) {
-        this.annotationName = annotationName;
-    }
-
-    public String getClassName() {
-        return className;
-    }
-
-
     public String getMethodName() {
         return methodName;
     }
 
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
 
     public String getAnnotationName() {
         return annotationName;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        JavaBeanExecutorRequest that = (JavaBeanExecutorRequest) o;
-
-        if (!className.equals(that.className)) return false;
-        if (!methodName.equals(that.methodName)) return false;
-        return annotationName.equals(that.annotationName);
-    }
-
-    @Override
-    public int hashCode() {
-        int result = className.hashCode();
-        result = 31 * result + methodName.hashCode();
-        result = 31 * result + annotationName.hashCode();
-        return result;
+    public void setAnnotationName(String annotationName) {
+        this.annotationName = annotationName;
     }
 }

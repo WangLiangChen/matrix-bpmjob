@@ -1,17 +1,17 @@
 package com.sintrue.bpmjob.example;
 
-import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
+import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJobExecutor;
 
 /**
  * @author Liangchen.Wang 2023-05-24 8:26
  */
 public class UseAnnotation {
 
-    @BpmJob
+    @BpmJobExecutor
     public void methodA(String jsonString){
 
     }
-    @BpmJob("methodBAlias")
+    @BpmJobExecutor("methodBAlias")
     public void methodB(String jsonString){
 
     }

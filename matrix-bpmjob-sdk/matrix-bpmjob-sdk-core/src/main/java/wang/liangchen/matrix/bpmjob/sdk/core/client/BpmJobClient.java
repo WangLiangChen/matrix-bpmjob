@@ -3,20 +3,20 @@ package wang.liangchen.matrix.bpmjob.sdk.core.client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import wang.liangchen.matrix.bpmjob.api.JavaBeanExecutorRequest;
+import wang.liangchen.matrix.bpmjob.api.BpmJobThreadInfo;
+import wang.liangchen.matrix.bpmjob.api.HeartbeatRequest;
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobClientProperties;
-import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJob;
+import wang.liangchen.matrix.bpmjob.sdk.core.annotation.BpmJobExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.connector.Connector;
 import wang.liangchen.matrix.bpmjob.sdk.core.connector.ConnectorFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.exception.BpmJobException;
-import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmJobExecutor;
 import wang.liangchen.matrix.bpmjob.sdk.core.executor.BpmjobExecutorFactory;
-import wang.liangchen.matrix.bpmjob.sdk.core.executor.JavaBeanExecutor;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.IBpmJobExecutor;
+import wang.liangchen.matrix.bpmjob.sdk.core.executor.JavaBeanExecutorKey;
 import wang.liangchen.matrix.bpmjob.sdk.core.runtime.ClassScanner;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThread;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThreadFactory;
-import wang.liangchen.matrix.bpmjob.sdk.core.thread.BpmJobThreadInfo;
 import wang.liangchen.matrix.bpmjob.sdk.core.thread.ThreadPoolType;
 import wang.liangchen.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
 
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public final class BpmJobClient {
     private final static Logger logger = LoggerFactory.getLogger(BpmJobClient.class);
     private final static AtomicInteger clientCounter = new AtomicInteger();
-    private final static Map<JavaBeanExecutor, Method> javaBeanExecutors = new HashMap<>();
+    private final static Map<JavaBeanExecutorKey, Method> javaBeanExecutors = new HashMap<>();
     private final String clientName;
     private final BpmJobClientProperties bpmJobClientProperties;
     private final Connector connector;
@@ -53,29 +53,32 @@ public final class BpmJobClient {
 
     static {
         // 实现BpmJobExecutor接口的方法
-        Set<Class<?>> implementedClasses = ClassScanner.INSTANCE.getImplementedClasses(BpmJobExecutor.class);
-        implementedClasses.stream().filter(clazz -> clazz != BpmJobExecutor.class).forEach(clazz -> {
+        Set<Class<?>> implementedClasses = ClassScanner.INSTANCE.getImplementedClasses(IBpmJobExecutor.class);
+        // 排除IBpmJobExcutor自身
+        implementedClasses.stream().filter(clazz -> clazz != IBpmJobExecutor.class).forEach(clazz -> {
             Method[] declaredMethods = clazz.getDeclaredMethods();
             String className = clazz.getName();
             for (Method declaredMethod : declaredMethods) {
                 String methodName = declaredMethod.getName();
-                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, methodName), declaredMethod);
+                javaBeanExecutors.put(JavaBeanExecutorKey.newInstance(className, methodName, methodName), declaredMethod);
             }
         });
+
         // 注解的方法
-        Set<Method> annotatedMethods = ClassScanner.INSTANCE.getAnnotatedMethods(BpmJob.class);
+        Set<Method> annotatedMethods = ClassScanner.INSTANCE.getAnnotatedMethods(BpmJobExecutor.class);
         for (Method annotatedMethod : annotatedMethods) {
             Class<?> clazz = annotatedMethod.getDeclaringClass();
             String className = clazz.getName();
             String methodName = annotatedMethod.getName();
-            javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, methodName), annotatedMethod);
-            BpmJob annotation = annotatedMethod.getAnnotation(BpmJob.class);
-            String value = annotation.value();
-            if (null != value) {
-                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, value), annotatedMethod);
+            BpmJobExecutor annotation = annotatedMethod.getAnnotation(BpmJobExecutor.class);
+            String[] annotationNames = annotation.names();
+            // 没有指定名称,用方法名
+            if (annotationNames.length == 0) {
+                javaBeanExecutors.put(JavaBeanExecutorKey.newInstance(className, methodName, methodName), annotatedMethod);
+                continue;
             }
-            for (String name : annotation.names()) {
-                javaBeanExecutors.put(JavaBeanExecutor.newInstance(className, methodName, name), annotatedMethod);
+            for (String annotationName : annotationNames) {
+                javaBeanExecutors.put(JavaBeanExecutorKey.newInstance(className, methodName, annotationName), annotatedMethod);
             }
         }
     }
@@ -210,7 +213,7 @@ public final class BpmJobClient {
         public void run() {
             Long taskId = task.getTaskId();
             String className = task.getClassName();
-            Method method = javaBeanExecutors.get(JavaBeanExecutorRequest.newInstance(className, task.getMethodName(), task.getAnnotationName()));
+            Method method = javaBeanExecutors.get(JavaBeanExecutorKey.newInstance(className, task.getMethodName(), task.getAnnotationName()));
             if (null == method) {
                 logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
                         taskId, className, task.getMethodName(), task.getAnnotationName());
@@ -256,7 +259,13 @@ public final class BpmJobClient {
                     ThreadGroup threadGroup = bpmJobThreadFactory.getThreadGroup();
                     List<ThreadInfo> threadInfos = ThreadSnapshot.INSTANCE.threadInfo(threadGroup);
                     List<BpmJobThreadInfo> bpmJobThreadInfos = threadInfos.stream().map(BpmJobThreadInfo::new).collect(Collectors.toList());
-
+                    HeartbeatRequest heartbeatRequest = new HeartbeatRequest();
+                    heartbeatRequest.setThreadInfos(bpmJobThreadInfos);
+                    connector.heartbeat(heartbeatRequest).whenComplete((empty, throwable) -> {
+                        if (null != throwable) {
+                            logger.error("heartbeat error!", throwable);
+                        }
+                    });
                 }
             }));
         }

@@ -18,8 +18,7 @@
         </dependency>
         <dependency>
             <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-bpmjob-sdk-core</artifactId>
-            <version>2.0.0-SNAPSHOT</version>
+            <artifactId>matrix-bpmjob-sdk-spring</artifactId>
         </dependency>
     </dependencies>
 

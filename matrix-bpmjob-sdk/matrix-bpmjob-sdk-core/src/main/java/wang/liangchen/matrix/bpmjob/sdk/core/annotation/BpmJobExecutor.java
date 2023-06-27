@@ -10,8 +10,6 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface BpmJob {
-    String value() default "";
-
+public @interface BpmJobExecutor {
     String[] names() default {};
 }

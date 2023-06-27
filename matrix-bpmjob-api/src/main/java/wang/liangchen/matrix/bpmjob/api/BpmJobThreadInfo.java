@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.sdk.core.thread;
+package wang.liangchen.matrix.bpmjob.api;
 
 import java.lang.management.LockInfo;
 import java.lang.management.ThreadInfo;
