@@ -26,11 +26,7 @@ public class BpmJobThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable runnable) {
-        BpmJobThread bpmJobThread = new BpmJobThread(this.threadGroup, runnable, String.format("%s%d", this.poolName, this.threadCounter.getAndIncrement()));
-        bpmJobThread.setUncaughtExceptionHandler((thread, throwable) -> {
-            logger.error("Thead error:" + thread.getName(), throwable);
-        });
-        return bpmJobThread;
+        return new BpmJobThread(this.threadGroup, runnable, String.format("%s-%d", this.poolName, this.threadCounter.getAndIncrement()));
     }
 
     public ThreadGroup getThreadGroup() {

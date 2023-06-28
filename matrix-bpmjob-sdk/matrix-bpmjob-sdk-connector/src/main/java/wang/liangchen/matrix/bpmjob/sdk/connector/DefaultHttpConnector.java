@@ -28,18 +28,18 @@ public class DefaultHttpConnector implements Connector {
     public CompletionStage<List<TaskResponse>> getTasks(int number) {
         Map<String, String> queryParams = new HashMap<>();
         queryParams.put("number", String.valueOf(number));
-        return VertxWebClientUtil.INSTANCE.getList(properties.getTaskUri().concat("/example/getTasks"), queryParams,
+        return VertxWebClientUtil.INSTANCE.getList(properties.getTaskUri().concat("/task/getTasks"), queryParams,
                 properties.getHeaders(), properties.getCredentials(), TaskResponse.class);
     }
 
     @Override
     public CompletionStage<Void> acceptTasks(Set<Long> taskIds) {
-        return VertxWebClientUtil.INSTANCE.postJson(properties.getTaskUri().concat("/example/acceptTasks"), taskIds, properties.getHeaders(), properties.getCredentials(), Void.class);
+        return VertxWebClientUtil.INSTANCE.postJson(properties.getTaskUri().concat("/task/acceptTasks"), taskIds, properties.getHeaders(), properties.getCredentials(), Void.class);
     }
 
     @Override
     public CompletionStage<Void> completeTask(TaskRequest taskRequest) {
-        return VertxWebClientUtil.INSTANCE.postJson(properties.getTaskUri().concat("/example/completeTask"), taskRequest, properties.getHeaders(), properties.getCredentials(), Void.class);
+        return VertxWebClientUtil.INSTANCE.postJson(properties.getTaskUri().concat("/task/completeTask"), taskRequest, properties.getHeaders(), properties.getCredentials(), Void.class);
     }
 
     @Override

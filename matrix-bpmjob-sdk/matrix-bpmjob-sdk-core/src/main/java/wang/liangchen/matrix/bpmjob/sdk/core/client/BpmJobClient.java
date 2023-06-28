@@ -23,10 +23,7 @@ import wang.liangchen.matrix.bpmjob.sdk.core.utils.ThreadSnapshot;
 
 import java.lang.management.ThreadInfo;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -41,7 +38,6 @@ public final class BpmJobClient {
     private final String clientName;
     private final BpmJobClientProperties bpmJobClientProperties;
     private final Connector connector;
-    private final Executor connectorPool;
     private final BpmjobExecutorFactory executorFactory;
     private boolean halted = true;
     private final AtomicInteger idleThreadCounter;
@@ -90,14 +86,13 @@ public final class BpmJobClient {
         this.executorFactory = executorFactory;
         this.clientName = String.format("bpmjob-client-%d", clientCounter.getAndIncrement());
 
-        this.connectorPool = Executors.newCachedThreadPool(new BpmJobThreadFactory("bpmjob-connector-", "bpmjob-connector"));
-        this.taskScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-task-scheduler-", "bpmjob-task-scheduler"));
-        this.heartbeatScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-heartbeat-scheduler-", "bpmjob-heartbeat-scheduler"));
+        this.taskScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-task-scheduler", "bpmjob-task-scheduler"));
+        this.heartbeatScheduler = Executors.newScheduledThreadPool(1, new BpmJobThreadFactory("bpmjob-heartbeat-scheduler", "bpmjob-heartbeat-scheduler"));
 
         byte taskThreadNumber = this.bpmJobClientProperties.getTaskThreadNumber();
         this.idleThreadCounter = new AtomicInteger(taskThreadNumber);
-        this.fastTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-fasttask-", "bpmjob-fasttask"));
-        this.slowTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-slowtask-", "bpmjob-slowtask"));
+        this.fastTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-fasttask", "bpmjob-fasttask"));
+        this.slowTaskExecutorPool = Executors.newFixedThreadPool(taskThreadNumber, new BpmJobThreadFactory("bpmjob-slowtask", "bpmjob-slowtask"));
 
         // add thread monitor
         if (this.taskScheduler instanceof ThreadPoolExecutor) {
@@ -126,7 +121,7 @@ public final class BpmJobClient {
     public synchronized void start() {
         if (this.halted) {
             this.heartbeatScheduler.scheduleWithFixedDelay(new HeartbeatProcessor(), 0, this.bpmJobClientProperties.getHeartbeatInterval(), TimeUnit.SECONDS);
-            //this.taskScheduler.scheduleWithFixedDelay(new GetTaskProcessor(), 0, this.bpmJobClientProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
+            this.taskScheduler.scheduleWithFixedDelay(new GetTaskProcessor(), 0, this.bpmJobClientProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
             // register hooker
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
             this.halted = false;
@@ -158,37 +153,45 @@ public final class BpmJobClient {
     private class GetTaskProcessor implements Runnable {
         @Override
         public void run() {
+            try {
+                doRun();
+            } catch (Exception e) {
+                logger.error("getTasks error.", e);
+            }
+        }
+
+        private void doRun() {
             int idleThreadNumber = idleThreadCounter.getAndSet(0);
+            logger.info("idleThreadNumber:{}", idleThreadNumber);
             if (idleThreadNumber <= 0) {
                 logger.info("No idle threads");
                 return;
             }
             connector.getTasks(idleThreadNumber)
-                    .whenComplete((tasks, throwable) -> {
-                        if (null != throwable) {
-                            idleThreadCounter.addAndGet(idleThreadNumber);
-                            logger.error("get tasks error.", throwable);
-                            return;
-                        }
+                    .exceptionally(throwable -> {
+                        logger.error("get tasks error.", throwable);
+                        return Collections.emptyList();
+                    }).thenAccept(tasks -> {
+                        // tasks is empty if exception;
                         if (null == tasks || tasks.isEmpty()) {
                             idleThreadCounter.addAndGet(idleThreadNumber);
-                            logger.info("No tasks got");
+                            logger.info("No tasks got, restoredThreadNumber:{}, idleThreadNumber:{}", idleThreadNumber, idleThreadCounter.get());
                             return;
                         }
                         int gotNumber = tasks.size();
                         int spareNumber = idleThreadNumber - gotNumber;
                         if (spareNumber > 0) {
                             idleThreadCounter.addAndGet(spareNumber);
-                            logger.info("idleThreadNumber:{}, gotNumber:{}, spareNumber:{}", idleThreadNumber, gotNumber, spareNumber);
+                            logger.info("gotNumber:{}, spareNumber:{}, restoredThreadNumber:{}, idleThreadNumber:{}", gotNumber, spareNumber, spareNumber, idleThreadCounter.get());
                         }
                         // accept
                         Set<Long> taskIds = tasks.stream().map(TaskResponse::getTaskId).collect(Collectors.toSet());
                         connector.acceptTasks(taskIds)
-                                .whenComplete((empty, acceptThrowable) -> {
-                                    if (null == acceptThrowable) {
+                                .whenComplete((empty, throwable) -> {
+                                    if (null == throwable) {
                                         runTasks(tasks);
                                     } else {
-                                        logger.error("accept tasks error.", acceptThrowable);
+                                        logger.error("accept tasks error.", throwable);
                                     }
                                 });
                     });
@@ -216,11 +219,19 @@ public final class BpmJobClient {
 
         @Override
         public void run() {
+            try {
+                doRun();
+            } catch (Exception e) {
+                logger.error("run task error:" + task.getTaskId(), e);
+            }
+        }
+
+        private void doRun() {
             Long taskId = task.getTaskId();
             String className = task.getClassName();
             Method method = javaBeanExecutors.get(JavaBeanExecutorKey.newInstance(className, task.getMethodName(), task.getAnnotationName()));
             if (null == method) {
-                logger.error("The method doesn't exist.taskId:{}, className:{} ,methodName:{}, annotationName:{}",
+                logger.error("The method doesn't exist.taskId:{}, className:{}, methodName:{}, annotationName:{}",
                         taskId, className, task.getMethodName(), task.getAnnotationName());
                 connector.completeTask(new TaskRequest(taskId, new BpmJobException("The method doesn't exist"))).whenComplete((empty, throwable) -> {
                     if (null != throwable) {
@@ -232,7 +243,7 @@ public final class BpmJobClient {
             // set taskId to Thread
             Thread thread = Thread.currentThread();
             if (thread instanceof BpmJobThread) {
-                ((BpmJobThread) thread).setTaskId(task.getTaskId());
+                ((BpmJobThread) thread).setTaskId(taskId);
             }
             try {
                 Object executor = executorFactory.createExecutor(className);
@@ -245,6 +256,7 @@ public final class BpmJobClient {
                 });
             } finally {
                 idleThreadCounter.incrementAndGet();
+                logger.info("restoredThreadNumber:1, idleThreadNumber:{}", idleThreadCounter.get());
                 connector.completeTask(new TaskRequest(taskId)).whenComplete((empty, throwable) -> {
                     if (null != throwable) {
                         logger.error("complete task error.taskId:".concat(String.valueOf(taskId)), throwable);
@@ -257,22 +269,37 @@ public final class BpmJobClient {
     private class HeartbeatProcessor implements Runnable {
         @Override
         public void run() {
+            try {
+                doRun();
+            } catch (Exception e) {
+                logger.error("Heartbeat error.", e);
+            }
+        }
+
+        private void doRun() {
+            List<BpmJobThreadInfo> bpmJobThreadInfos = new ArrayList<>();
             threadMonitors.forEach(((threadPoolType, executor) -> {
                 ThreadFactory threadFactory = executor.getThreadFactory();
                 if (threadFactory instanceof BpmJobThreadFactory) {
                     BpmJobThreadFactory bpmJobThreadFactory = (BpmJobThreadFactory) threadFactory;
                     ThreadGroup threadGroup = bpmJobThreadFactory.getThreadGroup();
                     List<ThreadInfo> threadInfos = ThreadSnapshot.INSTANCE.threadInfo(threadGroup);
-                    List<BpmJobThreadInfo> bpmJobThreadInfos = threadInfos.stream().map(BpmJobThreadInfo::new).collect(Collectors.toList());
-                    HeartbeatRequest heartbeatRequest = new HeartbeatRequest();
-                    heartbeatRequest.setThreadInfos(bpmJobThreadInfos);
-                    connector.heartbeat(heartbeatRequest).whenComplete((empty, throwable) -> {
-                        if (null != throwable) {
-                            logger.error("heartbeat error!", throwable);
-                        }
-                    });
+                    if (threadInfos.isEmpty()) {
+                        return;
+                    }
+                    bpmJobThreadInfos.addAll(threadInfos.stream().map(BpmJobThreadInfo::new).collect(Collectors.toList()));
                 }
             }));
+            if (bpmJobThreadInfos.isEmpty()) {
+                return;
+            }
+            HeartbeatRequest heartbeatRequest = new HeartbeatRequest();
+            heartbeatRequest.setThreadInfos(bpmJobThreadInfos);
+            connector.heartbeat(heartbeatRequest).whenComplete((empty, throwable) -> {
+                if (null != throwable) {
+                    logger.error("heartbeat error!", throwable);
+                }
+            });
         }
     }
 }
