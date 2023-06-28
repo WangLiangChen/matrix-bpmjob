@@ -7,7 +7,6 @@ import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 import wang.liangchen.matrix.framework.springboot.jackson.DefaultObjectMapper;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 

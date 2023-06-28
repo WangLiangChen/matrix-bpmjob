@@ -3,10 +3,7 @@ package wang.liangchen.matrix.bpmjob.trigger.handler;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
@@ -16,7 +13,6 @@ import wang.liangchen.matrix.bpmjob.domain.trigger.TriggerTime;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissedStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
-import wang.liangchen.matrix.bpmjob.trigger.event.TaskCreationEvent;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.datetime.DateTimeUtil;
 import wang.liangchen.matrix.framework.commons.exception.MatrixErrorException;
@@ -305,7 +301,9 @@ public class TriggerHandler {
                 // 状态正常才创建任务
                 Optional<Trigger> optionalTrigger = triggerManager.state(wal.getTriggerId());
                 optionalTrigger.filter(trigger -> Objects.equals(TriggerState.NORMAL.key(), trigger.getState().key()))
-                        .ifPresent(trigger -> applicationEventPublisher.publishEvent(new TaskCreationEvent(this, this.triggerProperties.getHostLabel(), wal)));
+                        .ifPresent(trigger -> {
+                            // TODO
+                        });
             } catch (Exception e) {
                 logger.error("create task error", e);
                 throw new MatrixErrorException(e);
