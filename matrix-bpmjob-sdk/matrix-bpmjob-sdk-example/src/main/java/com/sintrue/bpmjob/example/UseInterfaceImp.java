@@ -8,6 +8,6 @@ import wang.liangchen.matrix.bpmjob.sdk.core.executor.IBpmJobExecutor;
 public class UseInterfaceImp implements IBpmJobExecutor {
     @Override
     public void execute(String jsonString) {
-
+        System.out.println("execute task:" + jsonString+(1/0));
     }
 }

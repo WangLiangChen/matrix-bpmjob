@@ -8,8 +8,12 @@ import java.util.List;
  * @author Liangchen.Wang 2023-03-20 14:29
  */
 public class TaskRequest {
-    private final Long taskId;
+    private Long taskId;
     private List<StackTraceElementRequest> stackTrace;
+
+    public TaskRequest() {
+
+    }
 
     public TaskRequest(Long taskId) {
         this(taskId, null);
@@ -33,4 +37,19 @@ public class TaskRequest {
         }
     }
 
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
+    }
+
+    public void setStackTrace(List<StackTraceElementRequest> stackTrace) {
+        this.stackTrace = stackTrace;
+    }
+
+    public Long getTaskId() {
+        return taskId;
+    }
+
+    public List<StackTraceElementRequest> getStackTrace() {
+        return stackTrace;
+    }
 }

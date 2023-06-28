@@ -6,6 +6,7 @@ import wang.liangchen.matrix.bpmjob.api.TaskRequest;
 import wang.liangchen.matrix.bpmjob.api.TaskResponse;
 import wang.liangchen.matrix.framework.springboot.jackson.DefaultObjectMapper;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -18,17 +19,24 @@ import java.util.Set;
 public class TaskProvider {
     @GetMapping("/getTasks")
     public List<TaskResponse> getTasks(int number) {
-        System.out.println("get task number:" + number);
-        return Collections.emptyList();
+        List<TaskResponse> tasks = new ArrayList<>();
+        TaskResponse taskResponse = new TaskResponse();
+        taskResponse.setTaskId(110L);
+        taskResponse.setClassName("com.sintrue.bpmjob.example.UseInterfaceImp");
+        taskResponse.setMethodName("execute");
+        taskResponse.setAnnotationName("execute");
+        taskResponse.setJsonStringPatameter("{\"name\":\"liangchen.wang\",\"sex\":\"male\"}");
+        tasks.add(taskResponse);
+        return tasks;
     }
 
     @PostMapping("/acceptTasks")
     public void acceptTasks(@RequestBody Set<Long> taskIds) throws JsonProcessingException {
-        System.out.println(DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(taskIds));
+        System.out.println("acceptTask" + DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(taskIds));
     }
 
     @PostMapping("/completeTask")
     public void completeTask(@RequestBody TaskRequest taskRequest) throws JsonProcessingException {
-        System.out.println(DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(taskRequest));
+        System.out.println("completeTask:" + DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(taskRequest));
     }
 }

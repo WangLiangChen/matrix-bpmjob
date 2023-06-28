@@ -39,15 +39,13 @@ import java.util.concurrent.TimeUnit;
  * @author Liangchen.Wang
  */
 @Service
-public class TriggerHandler implements DisposableBean, ApplicationEventPublisherAware {
+public class TriggerHandler {
     private final static Logger logger = LoggerFactory.getLogger(TriggerHandler.class);
-
-    private ApplicationEventPublisher applicationEventPublisher;
     private final TriggerManager triggerManager;
     private final TriggerProperties triggerProperties;
 
 
-    private volatile boolean halted = false;
+    private volatile boolean halted = true;
     private final CountDownLatch countDownLatch = new CountDownLatch(2);
     private final TriggerThread triggerThread = new TriggerThread();
     private final WalThread walThread = new WalThread();
@@ -64,21 +62,30 @@ public class TriggerHandler implements DisposableBean, ApplicationEventPublisher
         this.triggerThread.start();
     }
 
-    @Override
-    public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
-        this.applicationEventPublisher = applicationEventPublisher;
+    public synchronized void start() {
+        if (this.halted) {
+            // register hooker
+            Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+            this.halted = false;
+        }
     }
 
-    @Override
-    public void destroy() throws Exception {
+    public synchronized void shutdown() {
+        if (this.halted) {
+            return;
+        }
         // halt all threads
         this.halted = true;
-        logger.info("Waiting for job to complete ...");
-        this.countDownLatch.await();
-        logger.info("Waiting for thread pool shutdown ...");
-        this.triggerPool.shutdown();
-        boolean shutdown = this.triggerPool.awaitTermination(1, TimeUnit.HOURS);
-        logger.info("thread pool shutdown: {}", shutdown);
+        try {
+            logger.info("Waiting for job to complete ...");
+            this.countDownLatch.await();
+            logger.info("Waiting for thread pool shutdown ...");
+            this.triggerPool.shutdown();
+            boolean shutdown = this.triggerPool.awaitTermination(1, TimeUnit.HOURS);
+            logger.info("thread pool shutdown: {}", shutdown);
+        } catch (Exception e) {
+            logger.error("shutdown error", e);
+        }
     }
 
     private class TriggerThread extends Thread {
