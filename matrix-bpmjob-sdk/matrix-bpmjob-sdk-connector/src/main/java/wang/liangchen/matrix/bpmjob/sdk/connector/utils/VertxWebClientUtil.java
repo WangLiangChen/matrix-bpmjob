@@ -57,10 +57,18 @@ public enum VertxWebClientUtil {
         return list.thenApply(e -> e.isEmpty() ? null : e.get(0));
     }
 
+    public <T> CompletionStage<T> postJson(String requestURI, Object body, MultiMap headers, Credentials credentials, Class<T> resultClass) {
+        return postJson(requestURI, body, null, headers, credentials, 0, resultClass);
+    }
+
 
     public <T> CompletionStage<List<T>> getList(String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {
         HttpRequest<Buffer> request = resolveHttpRequest(HttpMethod.GET, requestURI, queryParams, headers, credentials, timeout);
         return request.send().toCompletionStage().thenApply(response -> resolveResult(response.bodyAsJsonObject(), resultClass));
+    }
+
+    public <T> CompletionStage<List<T>> getList(String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, Class<T> resultClass) {
+        return getList(requestURI, queryParams, headers, credentials, 0, resultClass);
     }
 
     public <T> CompletionStage<T> getObject(String requestURI, Map<String, String> queryParams, MultiMap headers, Credentials credentials, long timeout, Class<T> resultClass) {

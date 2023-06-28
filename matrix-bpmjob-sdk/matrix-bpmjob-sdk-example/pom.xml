@@ -18,7 +18,17 @@
         </dependency>
         <dependency>
             <groupId>wang.liangchen.matrix</groupId>
-            <artifactId>matrix-bpmjob-sdk-spring</artifactId>
+            <artifactId>matrix-bpmjob-sdk-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>wang.liangchen.matrix</groupId>
+            <artifactId>matrix-bpmjob-sdk-connector</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.4.8</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

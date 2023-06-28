@@ -115,14 +115,18 @@ public final class BpmJobClient {
         // 上报Executor
         connector.reportMethods(javaBeanExecutors.keySet())
                 .whenComplete((empty, throwable) -> {
-                    throw new BpmJobException(throwable);
+                    if (null == throwable) {
+                        logger.info("reportMethods successful");
+                        return;
+                    }
+                    logger.error("reportMethods error.", throwable);
                 });
     }
 
     public synchronized void start() {
         if (this.halted) {
-            this.heartbeatScheduler.schedule(new HeartbeatProcessor(), this.bpmJobClientProperties.getHeartbeatInterval(), TimeUnit.SECONDS);
-            this.taskScheduler.schedule(new GetTaskProcessor(), this.bpmJobClientProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
+            this.heartbeatScheduler.scheduleWithFixedDelay(new HeartbeatProcessor(), 0, this.bpmJobClientProperties.getHeartbeatInterval(), TimeUnit.SECONDS);
+            //this.taskScheduler.scheduleWithFixedDelay(new GetTaskProcessor(), 0, this.bpmJobClientProperties.getTaskAcquireInterval(), TimeUnit.SECONDS);
             // register hooker
             Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
             this.halted = false;

@@ -1,5 +1,7 @@
 package wang.liangchen.matrix.bpmjob.sdk.connector;
 
+import io.vertx.core.MultiMap;
+import io.vertx.ext.auth.authentication.Credentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import wang.liangchen.matrix.bpmjob.sdk.core.BpmJobClientProperties;
@@ -65,6 +67,8 @@ public class DefaultHttpConnectorProperties extends BpmJobClientProperties {
      * 未设置则taskUri = uri
      */
     private String taskUri;
+    private MultiMap headers;
+    private Credentials credentials;
 
     public String getSecret() {
         return secret;
@@ -88,5 +92,13 @@ public class DefaultHttpConnectorProperties extends BpmJobClientProperties {
 
     public void setTaskUri(String taskUri) {
         this.taskUri = taskUri;
+    }
+
+    public MultiMap getHeaders() {
+        return headers;
+    }
+
+    public Credentials getCredentials() {
+        return credentials;
     }
 }

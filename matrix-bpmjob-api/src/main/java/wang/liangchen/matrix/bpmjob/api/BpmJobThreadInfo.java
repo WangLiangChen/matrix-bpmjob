@@ -31,8 +31,10 @@ public class BpmJobThreadInfo {
         this.threadName = threadInfo.getThreadName();
         this.threadState = threadInfo.getThreadState();
         LockInfo lockInfo = threadInfo.getLockInfo();
-        this.lockClassName = lockInfo.getClassName();
-        this.lockHashCode = lockInfo.getIdentityHashCode();
+        if (null != lockInfo) {
+            this.lockClassName = lockInfo.getClassName();
+            this.lockHashCode = lockInfo.getIdentityHashCode();
+        }
         this.lockName = threadInfo.getLockName();
         this.lockOwnerId = threadInfo.getLockOwnerId();
         this.lockOwnerName = threadInfo.getLockOwnerName();

@@ -14,17 +14,13 @@ import java.util.Set;
 @RestController
 @RequestMapping("/report")
 public class ReportProvider {
-    @PostMapping("/javaBeanExecutors")
-    public void javaBeanExecutors(@RequestHeader("tenant-code") String tenantCode,
-                                  @RequestHeader("app-code") String appCode,
-                                  @RequestBody Set<JavaBeanExecutorRequest> javaBeanExecutors) throws JsonProcessingException {
+    @PostMapping("/reportMethods")
+    public void reportMethods(@RequestBody Set<JavaBeanExecutorRequest> javaBeanExecutors) throws JsonProcessingException {
         System.out.println(DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(javaBeanExecutors));
     }
 
     @PostMapping("/heartbeat")
-    public void heartbeat(@RequestHeader("tenant-code") String tenantCode,
-                          @RequestHeader("app-code") String appCode,
-                          @RequestBody HeartbeatRequest heartbeatRequest) throws JsonProcessingException {
+    public void heartbeat(@RequestBody HeartbeatRequest heartbeatRequest) throws JsonProcessingException {
         System.out.println(DefaultObjectMapper.INSTANCE.objectMapper().writeValueAsString(heartbeatRequest));
     }
 }
