@@ -22,10 +22,7 @@ import wang.liangchen.matrix.framework.data.util.TransactionUtil;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +39,8 @@ public class TriggerHandler {
 
 
     private volatile boolean halted = true;
-    private final CountDownLatch countDownLatch = new CountDownLatch(2);
+    // TriggerThread/WalThread/TaskThread
+    private final CountDownLatch countDownLatch = new CountDownLatch(3);
     private final TriggerThread triggerThread = new TriggerThread();
     private final WalThread walThread = new WalThread();
     private final ScheduledThreadPoolExecutor triggerPool;
@@ -73,7 +71,7 @@ public class TriggerHandler {
         // halt all threads
         this.halted = true;
         try {
-            logger.info("Waiting for job to complete ...");
+            logger.info("Waiting for threads to complete ...");
             this.countDownLatch.await();
             logger.info("Waiting for thread pool shutdown ...");
             this.triggerPool.shutdown();
@@ -144,10 +142,7 @@ public class TriggerHandler {
 
     private void exclusiveTrigger(TriggerTime triggerTime) {
         Long triggerId = triggerTime.getTriggerId();
-        Trigger trigger = triggerManager.selectTrigger(triggerId,
-                Trigger::getTriggerId, Trigger::getTenantCode, Trigger::getAppCode, Trigger::getTriggerName, Trigger::getTriggerType, Trigger::getTriggerCron,
-                Trigger::getExecutorType, Trigger::getExecutorOption, Trigger::getMissedThreshold, Trigger::getMissedStrategy, Trigger::getAssignStrategy,
-                Trigger::getShardingStrategy, Trigger::getShardingNumber, Trigger::getTriggerParams, Trigger::getExtendedSettings, Trigger::getTaskSettings, Trigger::getState);
+        Trigger trigger = triggerManager.selectTrigger(triggerId, Trigger::getTriggerCron, Trigger::getMissedStrategy, Trigger::getMissedThreshold, Trigger::getState);
         if (null == trigger) {
             logger.info("Trigger '{}' doesnot exist", triggerId);
             return;
@@ -162,7 +157,7 @@ public class TriggerHandler {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime triggerInstant = triggerTime.getTriggerInstant();
         long delayMS = Duration.between(now, triggerInstant).toMillis();
-        boolean missed = delayMS <= -this.triggerProperties.getMissedThreshold().toMillis();
+        boolean missed = delayMS <= -trigger.getMissedThreshold() * 1000;
 
         // parse the next trigger instant, if missed,benchmark is now
         LocalDateTime benchmark = missed ? now : triggerInstant;
@@ -173,7 +168,7 @@ public class TriggerHandler {
             boolean renew = triggerManager.renewTriggerInstant(triggerId, triggerInstant, nextTriggerInstant);
             if (renew) {
                 logger.info("Exclusive Trigger Success. Trigger:{}, Host:{}", triggerId, hostLabel);
-                Wal innerWal = triggerManager.createWal(hostLabel, trigger, triggerInstant, JsonField.newInstance());
+                Wal innerWal = triggerManager.createWal(hostLabel, triggerId, triggerInstant, JsonField.newInstance());
                 logger.info("Wal created, Wal:{},Trigger:{}, Host:{}", innerWal.getWalId(), trigger.getTriggerId(), hostLabel);
                 return Optional.of(innerWal);
             }
@@ -314,6 +309,44 @@ public class TriggerHandler {
 
     private int confirmWal(Wal wal) {
         return triggerManager.deleteWal(wal.getWalId());
+    }
+
+    private class TaskThread extends Thread {
+        TaskThread() {
+            super("task-");
+        }
+
+        @Override
+        public void run() {
+            long sleep = 0;
+            while (true) {
+                /*--------------------------halted and break-------------------------------*/
+                if (halted) {
+                    countDownLatch.countDown();
+                    logger.info("The TaskThread is halted. Shutdown...");
+                    break;
+                }
+                /*--------------------------need sleep become some reasons-------------------------------*/
+                if (sleep > 0) {
+                    ThreadUtil.INSTANCE.sleep(TimeUnit.SECONDS, sleep);
+                    sleep = 0;
+                }
+                /*--------------------------acquire tasks-------------------------------*/
+                // TODO
+                List<Long> taskIds = new ArrayList<>();
+                try {
+                    if (CollectionUtil.INSTANCE.isEmpty(taskIds)) {
+                        sleep = 1;
+                        logger.info("Tasks acquisition empty.delay '{}s' and then retry", sleep);
+                        continue;
+                    }
+                } catch (Exception e) {
+                    sleep = 5;
+                    logger.error("Tasks acquisition failed.delay '{}s' and then retry", sleep);
+                    continue;
+                }
+            }
+        }
     }
 
 }

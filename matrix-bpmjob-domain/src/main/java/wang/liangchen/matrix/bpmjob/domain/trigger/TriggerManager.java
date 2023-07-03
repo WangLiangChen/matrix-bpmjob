@@ -14,6 +14,7 @@ import wang.liangchen.matrix.framework.data.dao.criteria.UpdateCriteria;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class TriggerManager {
     private final StandaloneDao repository;
+    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     @Inject
     public TriggerManager(StandaloneDao repository) {
@@ -132,23 +134,17 @@ public class TriggerManager {
                 ._equals(Wal::getWalId, walId));
     }
 
-    public Wal createWal(String hostLabel, Trigger trigger, LocalDateTime triggerInstant, JsonField taskParams) {
+    public Wal createWal(String hostLabel, Long triggerId, LocalDateTime triggerInstant, JsonField taskParams) {
         Wal wal = Wal.newInstance();
-        wal.setTriggerId(trigger.getTriggerId());
+        wal.setTriggerId(triggerId);
         wal.setHostLabel(hostLabel);
-        wal.setTenantCode(trigger.getTenantCode());
-        wal.setAppCode(trigger.getAppCode());
-        wal.setExecutorType(trigger.getExecutorType());
-        wal.setExecutorOption(trigger.getExecutorOption());
-        wal.setTriggerParams(trigger.getTriggerParams());
-        wal.setShardingNumber(trigger.getShardingNumber());
-
         wal.setTaskParams(taskParams);
 
         LocalDateTime now = LocalDateTime.now();
         wal.setCreateDatetime(now);
         wal.setExpectedDatetime(triggerInstant);
-        wal.setState(WalState.ACQUIRED.getState());
+        wal.setState(WalState.PENDING.getState());
+        wal.setWalKey(Long.toString(triggerId).concat(":").concat(triggerInstant.format(formatter)));
         this.repository.insert(wal);
         return wal;
     }

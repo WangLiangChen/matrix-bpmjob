@@ -2,10 +2,8 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
-import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
@@ -25,30 +23,9 @@ public class Wal extends RootEntity {
     @Id
     @IdStrategy(IdStrategy.Strategy.MatrixFlake)
     private Long walId;
-    /**
-     * PrimaryKey
-     */
     private Long triggerId;
+    private String walKey;
     private String hostLabel;
-    private String tenantCode;
-    private String appCode;
-    /**
-     * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
-     */
-    private ExecutorType executorType;
-    /**
-     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
-     */
-    private String executorOption;
-    /**
-     * 触发参数
-     */
-    @ColumnJson
-    private JsonField triggerParams;
-    /**
-     * 分片数，子任务数；0-不分片，不能创建子任务
-     */
-    private Byte shardingNumber;
     /**
      * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
@@ -63,7 +40,7 @@ public class Wal extends RootEntity {
     private LocalDateTime createDatetime;
 
     /**
-     * 1-acquired;2-triggered
+     * 0-pending;1-confirmed;
      * 状态列
      */
     private Byte state;
@@ -100,60 +77,20 @@ public class Wal extends RootEntity {
         this.triggerId = triggerId;
     }
 
+    public String getWalKey() {
+        return walKey;
+    }
+
+    public void setWalKey(String walKey) {
+        this.walKey = walKey;
+    }
+
     public String getHostLabel() {
         return hostLabel;
     }
 
     public void setHostLabel(String hostLabel) {
         this.hostLabel = hostLabel;
-    }
-
-    public String getTenantCode() {
-        return tenantCode;
-    }
-
-    public void setTenantCode(String tenantCode) {
-        this.tenantCode = tenantCode;
-    }
-
-    public String getAppCode() {
-        return appCode;
-    }
-
-    public void setAppCode(String appCode) {
-        this.appCode = appCode;
-    }
-
-    public ExecutorType getExecutorType() {
-        return executorType;
-    }
-
-    public void setExecutorType(ExecutorType executorType) {
-        this.executorType = executorType;
-    }
-
-    public String getExecutorOption() {
-        return executorOption;
-    }
-
-    public void setExecutorOption(String executorOption) {
-        this.executorOption = executorOption;
-    }
-
-    public JsonField getTriggerParams() {
-        return triggerParams;
-    }
-
-    public void setTriggerParams(JsonField triggerParams) {
-        this.triggerParams = triggerParams;
-    }
-
-    public Byte getShardingNumber() {
-        return shardingNumber;
-    }
-
-    public void setShardingNumber(Byte shardingNumber) {
-        this.shardingNumber = shardingNumber;
     }
 
     public JsonField getTaskParams() {
@@ -179,7 +116,6 @@ public class Wal extends RootEntity {
     public void setCreateDatetime(LocalDateTime createDatetime) {
         this.createDatetime = createDatetime;
     }
-
 
     public Byte getState() {
         return state;

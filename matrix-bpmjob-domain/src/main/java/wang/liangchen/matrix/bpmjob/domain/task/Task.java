@@ -36,6 +36,8 @@ public class Task extends RootEntity {
      * PrimaryKey
      */
     private Long triggerId;
+    private String tenantCode;
+    private String appCode;
     /**
      * 预期分配到任务的executor
      */
@@ -44,16 +46,12 @@ public class Task extends RootEntity {
      * 实际分配到任务的executor
      */
     private String actualHost;
-    private String tenantCode;
-    private String appCode;
+
     /**
-     * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
+     * 执行器类型
      */
     private ExecutorType executorType;
-    /**
-     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
-     */
-    private String executorOption;
+    private String executorSettings;
     /**
      * 配置在trigger上的参数-静态
      */
@@ -62,10 +60,9 @@ public class Task extends RootEntity {
      * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
     private JsonField taskParams;
-    /**
-     * 分片数;子任务数;0-不分片,不能创建子任务
-     */
-    private Byte shardingNumber;
+    private Integer runningDuration;
+    private Short shardingNumber;
+    private Short shardingSequence;
     /**
      * 预期触发时间
      */
@@ -74,6 +71,7 @@ public class Task extends RootEntity {
      * 创建时间
      */
     private LocalDateTime createDatetime;
+    private LocalDateTime startDatetime;
     /**
      * 分配时间
      */
@@ -148,22 +146,6 @@ public class Task extends RootEntity {
         this.triggerId = triggerId;
     }
 
-    public String getExpectedHost() {
-        return expectedHost;
-    }
-
-    public void setExpectedHost(String expectedHost) {
-        this.expectedHost = expectedHost;
-    }
-
-    public String getActualHost() {
-        return actualHost;
-    }
-
-    public void setActualHost(String actualHost) {
-        this.actualHost = actualHost;
-    }
-
     public String getTenantCode() {
         return tenantCode;
     }
@@ -180,6 +162,22 @@ public class Task extends RootEntity {
         this.appCode = appCode;
     }
 
+    public String getExpectedHost() {
+        return expectedHost;
+    }
+
+    public void setExpectedHost(String expectedHost) {
+        this.expectedHost = expectedHost;
+    }
+
+    public String getActualHost() {
+        return actualHost;
+    }
+
+    public void setActualHost(String actualHost) {
+        this.actualHost = actualHost;
+    }
+
     public ExecutorType getExecutorType() {
         return executorType;
     }
@@ -188,12 +186,12 @@ public class Task extends RootEntity {
         this.executorType = executorType;
     }
 
-    public String getExecutorOption() {
-        return executorOption;
+    public String getExecutorSettings() {
+        return executorSettings;
     }
 
-    public void setExecutorOption(String executorOption) {
-        this.executorOption = executorOption;
+    public void setExecutorSettings(String executorSettings) {
+        this.executorSettings = executorSettings;
     }
 
     public JsonField getTriggerParams() {
@@ -212,12 +210,28 @@ public class Task extends RootEntity {
         this.taskParams = taskParams;
     }
 
-    public Byte getShardingNumber() {
+    public Integer getRunningDuration() {
+        return runningDuration;
+    }
+
+    public void setRunningDuration(Integer runningDuration) {
+        this.runningDuration = runningDuration;
+    }
+
+    public Short getShardingNumber() {
         return shardingNumber;
     }
 
-    public void setShardingNumber(Byte shardingNumber) {
+    public void setShardingNumber(Short shardingNumber) {
         this.shardingNumber = shardingNumber;
+    }
+
+    public Short getShardingSequence() {
+        return shardingSequence;
+    }
+
+    public void setShardingSequence(Short shardingSequence) {
+        this.shardingSequence = shardingSequence;
     }
 
     public LocalDateTime getExpectedDatetime() {
@@ -236,6 +250,13 @@ public class Task extends RootEntity {
         this.createDatetime = createDatetime;
     }
 
+    public LocalDateTime getStartDatetime() {
+        return startDatetime;
+    }
+
+    public void setStartDatetime(LocalDateTime startDatetime) {
+        this.startDatetime = startDatetime;
+    }
 
     public LocalDateTime getAssignDatetime() {
         return assignDatetime;

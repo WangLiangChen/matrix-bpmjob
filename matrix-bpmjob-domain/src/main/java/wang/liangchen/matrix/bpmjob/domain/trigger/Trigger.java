@@ -2,7 +2,10 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.*;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.AssignStrategy;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissedStrategy;
+import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
 import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
@@ -38,23 +41,14 @@ public class Trigger extends CommonEntity {
      */
     private String triggerCron;
 
-    /**
-     * 执行器类型：JAVA_EXECUTOR;SCRIPT_EXECUTOR
-     */
     private ExecutorType executorType;
-    /**
-     * 执行器选项 JAVA_EXECUTOR:CLASS,METHOD;SCRIPT_EXECUTOR:GROOVY,PYTHON,SHELL,PHP,NODEJS,POWERSHELL
-     */
-    private String executorOption;
+
+    private String executorSettings;
     /**
      * 触发参数
      */
     @ColumnJson
     private JsonField triggerParams;
-    /**
-     * 分片数，子任务数；0-不分片，不能创建子任务
-     */
-    private Byte shardingNumber;
     /**
      * 错失触发的阈值,单位S
      */
@@ -69,21 +63,12 @@ public class Trigger extends CommonEntity {
      */
     private AssignStrategy assignStrategy;
     /**
-     * 任务分片策略AUTO-自动;PROGRAM-编程式;
+     * 分片数
      */
-    private ShardingStrategy shardingStrategy;
+    private Short shardingNumber;
+    private Integer runningDuration;
 
 
-    /**
-     * 扩展配置
-     */
-    @ColumnJson
-    private JsonField extendedSettings;
-    /**
-     * 任务参数(类型、策略、配置等)
-     */
-    @ColumnJson
-    private JsonField taskSettings;
 
 
     public static Trigger valueOf(Object source) {
@@ -158,12 +143,12 @@ public class Trigger extends CommonEntity {
         this.executorType = executorType;
     }
 
-    public String getExecutorOption() {
-        return executorOption;
+    public String getExecutorSettings() {
+        return executorSettings;
     }
 
-    public void setExecutorOption(String executorOption) {
-        this.executorOption = executorOption;
+    public void setExecutorSettings(String executorSettings) {
+        this.executorSettings = executorSettings;
     }
 
     public JsonField getTriggerParams() {
@@ -172,14 +157,6 @@ public class Trigger extends CommonEntity {
 
     public void setTriggerParams(JsonField triggerParams) {
         this.triggerParams = triggerParams;
-    }
-
-    public Byte getShardingNumber() {
-        return shardingNumber;
-    }
-
-    public void setShardingNumber(Byte shardingNumber) {
-        this.shardingNumber = shardingNumber;
     }
 
     public Byte getMissedThreshold() {
@@ -206,27 +183,19 @@ public class Trigger extends CommonEntity {
         this.assignStrategy = assignStrategy;
     }
 
-    public ShardingStrategy getShardingStrategy() {
-        return shardingStrategy;
+    public Short getShardingNumber() {
+        return shardingNumber;
     }
 
-    public void setShardingStrategy(ShardingStrategy shardingStrategy) {
-        this.shardingStrategy = shardingStrategy;
+    public void setShardingNumber(Short shardingNumber) {
+        this.shardingNumber = shardingNumber;
     }
 
-    public JsonField getExtendedSettings() {
-        return extendedSettings;
+    public Integer getRunningDuration() {
+        return runningDuration;
     }
 
-    public void setExtendedSettings(JsonField extendedSettings) {
-        this.extendedSettings = extendedSettings;
-    }
-
-    public JsonField getTaskSettings() {
-        return taskSettings;
-    }
-
-    public void setTaskSettings(JsonField taskSettings) {
-        this.taskSettings = taskSettings;
+    public void setRunningDuration(Integer runningDuration) {
+        this.runningDuration = runningDuration;
     }
 }

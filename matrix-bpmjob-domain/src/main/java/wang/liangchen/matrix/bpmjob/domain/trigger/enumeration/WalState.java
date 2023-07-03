@@ -6,7 +6,7 @@ import wang.liangchen.matrix.framework.commons.exception.MatrixWarnException;
  * @author Liangchen.Wang 2022-10-27 9:24
  */
 public enum WalState {
-    ACQUIRED, TRIGGERED;
+    PENDING, CONFIRMED;
 
     public byte getState() {
         return (byte) (1 << this.ordinal());

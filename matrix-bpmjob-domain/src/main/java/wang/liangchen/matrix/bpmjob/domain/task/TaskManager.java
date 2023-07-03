@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import wang.liangchen.matrix.bpmjob.domain.trigger.Trigger;
 import wang.liangchen.matrix.bpmjob.domain.trigger.Wal;
 import wang.liangchen.matrix.framework.commons.collection.CollectionUtil;
 import wang.liangchen.matrix.framework.commons.enumeration.Symbol;
@@ -31,22 +32,22 @@ public class TaskManager {
         this.repository = repository;
     }
 
-    public int create(String hostLable, Wal wal) {
-        Byte shardingNumber = wal.getShardingNumber();
+    public int create(String hostLable, Wal wal, Trigger trigger) {
+        Short shardingNumber = trigger.getShardingNumber();
         shardingNumber = shardingNumber == 0 ? 1 : shardingNumber;
         List<Task> tasks = new ArrayList<>();
-        for (byte i = 0; i < shardingNumber; i++) {
+        for (short i = 0; i < shardingNumber; i++) {
             Task task = Task.newInstance();
-            task.setParentId(0L);
+            task.setParentId(wal.getWalId());
             task.setWalId(wal.getWalId());
             task.setTriggerId(wal.getTriggerId());
             task.setExpectedHost(wal.getHostLabel());
             task.setActualHost(hostLable);
-            task.setTenantCode(wal.getTenantCode());
-            task.setAppCode(wal.getAppCode());
-            task.setExecutorType(wal.getExecutorType());
-            task.setExecutorOption(wal.getExecutorOption());
-            task.setTriggerParams(wal.getTriggerParams());
+            task.setTenantCode(trigger.getTenantCode());
+            task.setAppCode(trigger.getAppCode());
+            task.setExecutorType(trigger.getExecutorType());
+            task.setExecutorSettings(trigger.getExecutorSettings());
+            task.setTriggerParams(trigger.getTriggerParams());
             task.setTaskParams(wal.getTaskParams());
 
             task.setShardingNumber(i);
