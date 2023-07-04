@@ -2,9 +2,10 @@ package wang.liangchen.matrix.bpmjob.domain.task;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
+import wang.liangchen.matrix.bpmjob.api.enums.ExecutorType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
+import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
@@ -18,23 +19,11 @@ import java.time.LocalDateTime;
  */
 @Entity(name = "bpmjob_task")
 public class Task extends RootEntity {
-    /**
-     * PrimaryKey
-     */
     @Id
     @IdStrategy(value = IdStrategy.Strategy.MatrixFlake)
     private Long taskId;
-    /**
-     * PrimaryKey
-     */
     private Long parentId;
-    /**
-     * PrimaryKey
-     */
     private Long walId;
-    /**
-     * PrimaryKey
-     */
     private Long triggerId;
     private String tenantCode;
     private String appCode;
@@ -55,12 +44,15 @@ public class Task extends RootEntity {
     /**
      * 配置在trigger上的参数-静态
      */
+    @ColumnJson
     private JsonField triggerParams;
     /**
      * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
+    @ColumnJson
     private JsonField taskParams;
-    private Integer runningDuration;
+    private Integer runningDurationThreshold;
+    private Long runningDuration;
     private Short shardingNumber;
     private Short shardingSequence;
     /**
@@ -94,7 +86,6 @@ public class Task extends RootEntity {
     private Byte progress;
     /**
      * 状态
-     * 状态列
      */
     private Byte state;
 
@@ -210,11 +201,19 @@ public class Task extends RootEntity {
         this.taskParams = taskParams;
     }
 
-    public Integer getRunningDuration() {
+    public Integer getRunningDurationThreshold() {
+        return runningDurationThreshold;
+    }
+
+    public void setRunningDurationThreshold(Integer runningDurationThreshold) {
+        this.runningDurationThreshold = runningDurationThreshold;
+    }
+
+    public Long getRunningDuration() {
         return runningDuration;
     }
 
-    public void setRunningDuration(Integer runningDuration) {
+    public void setRunningDuration(Long runningDuration) {
         this.runningDuration = runningDuration;
     }
 

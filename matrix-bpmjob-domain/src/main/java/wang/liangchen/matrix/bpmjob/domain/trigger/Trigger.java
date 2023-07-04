@@ -2,8 +2,8 @@ package wang.liangchen.matrix.bpmjob.domain.trigger;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import wang.liangchen.matrix.bpmjob.api.enums.ExecutorType;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.AssignStrategy;
-import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.ExecutorType;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.MissedStrategy;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerType;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
@@ -66,9 +66,7 @@ public class Trigger extends CommonEntity {
      * 分片数
      */
     private Short shardingNumber;
-    private Integer runningDuration;
-
-
+    private Integer runningDurationThreshold;
 
 
     public static Trigger valueOf(Object source) {
@@ -191,11 +189,11 @@ public class Trigger extends CommonEntity {
         this.shardingNumber = shardingNumber;
     }
 
-    public Integer getRunningDuration() {
-        return runningDuration;
+    public Integer getRunningDurationThreshold() {
+        return runningDurationThreshold;
     }
 
-    public void setRunningDuration(Integer runningDuration) {
-        this.runningDuration = runningDuration;
+    public void setRunningDurationThreshold(Integer runningDurationThreshold) {
+        this.runningDurationThreshold = runningDurationThreshold;
     }
 }

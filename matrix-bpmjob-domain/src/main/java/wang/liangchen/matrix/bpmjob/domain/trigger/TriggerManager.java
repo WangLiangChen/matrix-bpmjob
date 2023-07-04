@@ -5,6 +5,7 @@ import org.springframework.scheduling.support.CronExpression;
 import org.springframework.stereotype.Service;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.TriggerState;
 import wang.liangchen.matrix.bpmjob.domain.trigger.enumeration.WalState;
+import wang.liangchen.matrix.framework.commons.enumeration.Symbol;
 import wang.liangchen.matrix.framework.commons.exception.MatrixInfoException;
 import wang.liangchen.matrix.framework.data.dao.StandaloneDao;
 import wang.liangchen.matrix.framework.data.dao.criteria.Criteria;
@@ -139,18 +140,26 @@ public class TriggerManager {
         wal.setTriggerId(triggerId);
         wal.setHostLabel(hostLabel);
         wal.setTaskParams(taskParams);
-
-        LocalDateTime now = LocalDateTime.now();
-        wal.setCreateDatetime(now);
         wal.setExpectedDatetime(triggerInstant);
+        wal.setCreateDatetime(LocalDateTime.now());
         wal.setState(WalState.PENDING.getState());
-        wal.setWalKey(Long.toString(triggerId).concat(":").concat(triggerInstant.format(formatter)));
+        // unique key = triggerId:triggerInstant
+        wal.setWalKey(triggerInstant.format(formatter).concat(Symbol.COLON.getSymbol()).concat(Long.toString(triggerId)));
         this.repository.insert(wal);
         return wal;
     }
 
     public int deleteWal(Long walId) {
         return this.repository.delete(DeleteCriteria.of(Wal.class)._equals(Wal::getWalId, walId));
+    }
+
+    public int confirmWal(Long walId) {
+        Wal wal = Wal.newInstance();
+        wal.setState(WalState.CONFIRMED.getState());
+        UpdateCriteria<Wal> criteria = UpdateCriteria.of(Wal.class)
+                ._equals(Wal::getWalId, walId)
+                ._equals(Wal::getState, WalState.PENDING.getState());
+        return this.repository.update(criteria);
     }
 
     public Optional<Trigger> state(Long triggerId) {

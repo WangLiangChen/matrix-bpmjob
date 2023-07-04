@@ -1,4 +1,4 @@
-package wang.liangchen.matrix.bpmjob.domain.trigger.enumeration;
+package wang.liangchen.matrix.bpmjob.api.enums;
 
 /**
  * @author Liangchen.Wang 2023-01-12 17:20

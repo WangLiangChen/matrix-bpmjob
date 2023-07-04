@@ -308,7 +308,7 @@ public class TriggerHandler {
     }
 
     private int confirmWal(Wal wal) {
-        return triggerManager.deleteWal(wal.getWalId());
+        return triggerManager.confirmWal(wal.getWalId());
     }
 
     private class TaskThread extends Thread {

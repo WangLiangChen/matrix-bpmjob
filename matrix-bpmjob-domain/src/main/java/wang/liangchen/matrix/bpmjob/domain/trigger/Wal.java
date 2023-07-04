@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import wang.liangchen.matrix.framework.commons.object.ObjectUtil;
 import wang.liangchen.matrix.framework.commons.type.ClassUtil;
+import wang.liangchen.matrix.framework.data.annotation.ColumnJson;
 import wang.liangchen.matrix.framework.data.annotation.IdStrategy;
 import wang.liangchen.matrix.framework.data.dao.entity.JsonField;
 import wang.liangchen.matrix.framework.data.dao.entity.RootEntity;
@@ -29,6 +30,7 @@ public class Wal extends RootEntity {
     /**
      * 显式创建任务的参数-动态,会覆盖合并trigger_params.如API触发、子任务、流程任务等
      */
+    @ColumnJson
     private JsonField taskParams;
     /**
      * 预期触发时间

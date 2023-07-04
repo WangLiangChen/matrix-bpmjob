@@ -36,28 +36,33 @@ public class TaskManager {
         Short shardingNumber = trigger.getShardingNumber();
         shardingNumber = shardingNumber == 0 ? 1 : shardingNumber;
         List<Task> tasks = new ArrayList<>();
+        // 按分片数创建任务
         for (short i = 0; i < shardingNumber; i++) {
             Task task = Task.newInstance();
             task.setParentId(wal.getWalId());
             task.setWalId(wal.getWalId());
             task.setTriggerId(wal.getTriggerId());
-            task.setExpectedHost(wal.getHostLabel());
-            task.setActualHost(hostLable);
             task.setTenantCode(trigger.getTenantCode());
             task.setAppCode(trigger.getAppCode());
+            task.setExpectedHost(wal.getHostLabel());
+            task.setActualHost(hostLable);
             task.setExecutorType(trigger.getExecutorType());
             task.setExecutorSettings(trigger.getExecutorSettings());
             task.setTriggerParams(trigger.getTriggerParams());
             task.setTaskParams(wal.getTaskParams());
-
-            task.setShardingNumber(i);
-
-            LocalDateTime now = LocalDateTime.now();
+            task.setRunningDurationThreshold(trigger.getRunningDurationThreshold());
+            task.setRunningDuration(0L);
+            // 分片总数及分片序号
+            task.setShardingNumber(shardingNumber);
+            task.setShardingSequence(i);
             task.setExpectedDatetime(wal.getExpectedDatetime());
+            LocalDateTime now = LocalDateTime.now();
             task.setCreateDatetime(now);
-            task.setAssignDatetime(now);
-            task.setAcceptDatetime(now);
-            task.setCompleteDatetime(now);
+            task.setStartDatetime(now);
+            LocalDateTime max = LocalDateTime.MAX;
+            task.setAssignDatetime(max);
+            task.setAcceptDatetime(max);
+            task.setCompleteDatetime(max);
             task.setCompleteSummary(Symbol.BLANK.getSymbol());
             task.setProgress((byte) 0);
             task.setState(TaskState.UNASSIGNED.getState());
