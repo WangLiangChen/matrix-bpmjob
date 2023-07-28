@@ -19,6 +19,7 @@
         </developer>
     </developers>
     <modules>
+        <module>matrix-bpmjob-common</module>
         <module>matrix-bpmjob-trigger</module>
         <module>matrix-bpmjob-console</module>
         <module>matrix-bpmjob-domain</module>
@@ -50,6 +51,16 @@
             </dependency>
             <dependency>
                 <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
+                <artifactId>matrix-bpmjob-trigger</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>wang.liangchen.matrix</groupId>
                 <artifactId>matrix-bpmjob-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -76,11 +87,6 @@
             <dependency>
                 <groupId>wang.liangchen.matrix</groupId>
                 <artifactId>matrix-bpmjob-task</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>wang.liangchen.matrix</groupId>
-                <artifactId>matrix-bpmjob-trigger</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

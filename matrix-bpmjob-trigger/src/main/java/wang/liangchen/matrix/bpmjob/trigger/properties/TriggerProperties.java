@@ -1,6 +1,7 @@
 package wang.liangchen.matrix.bpmjob.trigger.properties;
 
-import wang.liangchen.matrix.framework.commons.network.NetUtil;
+
+import wang.liangchen.matrix.bpmjob.common.utils.NetUtil;
 
 import java.time.Duration;
 import java.util.Properties;
